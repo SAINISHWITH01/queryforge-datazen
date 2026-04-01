@@ -671,6 +671,7 @@ thead .rn-col{background:#1e293b !important;color:#6b7280;font-weight:600 !impor
   <div class="statusbar">
     <span style="display:flex;align-items:center;gap:6px;"><div class="sdot" id="sdot"></div><span id="sconn">Not connected</span></span>
     <span id="srows"></span><span id="stime"></span><span id="sstage" style="color:#ffd740;"></span>
+	<span id="meta-status" style="display:none;font-size:11px;"></span><span style="margin-left:auto;display:flex;align-items:center;gap:12px;">
     <span style="margin-left:auto;display:flex;align-items:center;gap:12px;">
       <span id="proxy-badge" style="font-size:10px;padding:2px 8px;border-radius:10px;background:#333;color:#aaa;cursor:help;">⏳ Checking proxy…</span>
       <span id="spos">Ln 1, Col 1</span>
@@ -1861,14 +1862,14 @@ function escJ(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").repl
 ══════════════════════════════════════════ */
 function loadMetadata(){
   if(!activeConn){ alert('Select a connection first.'); return; }
-  setStage('Loading metadata…');
+  setMetaStatus('loading', '⏳ Loading metadata…');
   var sql = "SELECT TABLE_NAME, COLUMN_NAME FROM ALL_TAB_COLUMNS WHERE OWNER = SYS_CONTEXT('USERENV','CURRENT_SCHEMA') ORDER BY TABLE_NAME, COLUMN_ID";
   var auth = basicAuth(activeConn), conn = activeConn;
   soapCall(conn.url+'/xmlpserver/services/ExternalReportWSSService', buildRunReportSOAP(conn, sql), auth)
     .then(function(resp){ return resp.text(); })
     .then(function(xml){
       var p = parseCSVResponse(xml);
-      if(p.error || !p.rows.length){ setStage('Metadata: no data'); return; }
+      if(p.error || !p.rows.length){ setMetaStatus('failed', '⚠ Metadata: no data — click ⚡ Meta to retry'); return; }
       acMeta = {};
       p.rows.forEach(function(r){
         var t = (r['TABLE_NAME']||r['table_name']||'').trim();
@@ -1880,11 +1881,19 @@ function loadMetadata(){
       });
       acMetaLoaded = true;
       var tCount = Object.keys(acMeta).length;
-      setStage('✓ Metadata: '+tCount+' tables loaded');
-      setTimeout(function(){ setStage(''); }, 3000);
+      setMetaStatus('ok', '⚡ Metadata: '+tCount+' tables loaded');
     })
-    .catch(function(){ setStage('Metadata load failed'); setTimeout(function(){ setStage(''); },3000); });
+    .catch(function(){ setMetaStatus('failed', '⚠ Metadata failed — click ⚡ Meta to retry'); });
 }
+
+function setMetaStatus(state, msg){
+  var el = document.getElementById('meta-status');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color   = state==='ok' ? '#4ade80' : state==='failed' ? '#f87171' : '#fbbf24';
+  el.style.display = 'inline';
+}
+
 </script>
 </body>
 </html>
