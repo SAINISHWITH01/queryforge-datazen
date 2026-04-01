@@ -1058,7 +1058,7 @@ function _executeSQL(sql){
   var val = document.getElementById('fetchrows').value;
   var limit = (val === 'ALL') ? Infinity : parseInt(val) || 100;
   clearResults();
-  running=true;setLoading(true);setStage('Sending SQL to Oracle BI Publisher…');
+  running=true;setLoading(true);setStage('Running...');
   var auth=basicAuth(activeConn),conn=activeConn,t0=Date.now();
   soapCall(conn.url+'/xmlpserver/services/ExternalReportWSSService',buildRunReportSOAP(conn,sql),auth)
     .then(function(resp){
