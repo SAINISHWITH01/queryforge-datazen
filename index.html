@@ -913,7 +913,7 @@ function checkProxy(cb){
 }
 function updateProxyStatus(ok){
   var el=document.getElementById('proxy-badge');if(!el)return;
-  el.textContent=ok?'🟢 Proxy active':'🔴 No proxy';
+  el.textContent=ok?'🟢 Proxy active':'🔴 No proxy active';
   el.style.color=ok?'#1b5e20':'#b71c1c';el.style.background=ok?'#e8f5e9':'#ffebee';
 }
 function makeFetch(targetUrl,options){
