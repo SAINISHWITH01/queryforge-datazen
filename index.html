@@ -1364,9 +1364,120 @@ function sqlHL(code){
 }
 function clearEditor(){document.getElementById('sqled').value='';doHL();doLN();}
 function formatSQL(){
-  var ta=document.getElementById('sqled'),v=ta.value;
-  ['SELECT','FROM','WHERE','AND','OR','JOIN','LEFT JOIN','RIGHT JOIN','INNER JOIN','ORDER BY','GROUP BY','HAVING','UNION ALL','UNION'].forEach(function(k){v=v.replace(new RegExp('(?<![\\w])'+k+'(?![\\w])','gi'),'\n'+k.toUpperCase());});
-  v=v.replace(/^\n/,'').replace(/\n{3,}/g,'\n\n');ta.value=v;doHL();doLN();
+  var ta=document.getElementById('sqled'), v=ta.value;
+
+  // ── Step 1: Protect string literals so we never mangle content inside quotes ──
+  var literals=[];
+  v=v.replace(/'(?:[^'\\]|''|\\.)*'/g,function(m){
+    literals.push(m);
+    return '\x00STR'+(literals.length-1)+'\x00';
+  });
+
+  // ── Step 2: Collapse all whitespace / newlines to single spaces ──
+  v=v.replace(/\s+/g,' ').trim();
+
+  // ── Step 3: Keywords that must be on their own line.
+  //   ORDER MATTERS: longer / compound keywords BEFORE their substrings
+  //   e.g. "LEFT JOIN" before "JOIN", "UNION ALL" before "UNION"
+  var lineBreakKws=[
+    'CROSS JOIN','NATURAL JOIN',
+    'LEFT OUTER JOIN','RIGHT OUTER JOIN','FULL OUTER JOIN',
+    'LEFT JOIN','RIGHT JOIN','INNER JOIN','FULL JOIN',
+    'JOIN',
+    'ORDER BY','GROUP BY',
+    'UNION ALL','UNION','INTERSECT','MINUS',
+    'SELECT','FROM','WHERE','HAVING',
+    'CONNECT BY','START WITH',
+    'PIVOT','UNPIVOT',
+    'MERGE INTO','WHEN MATCHED','WHEN NOT MATCHED'
+  ];
+
+  lineBreakKws.forEach(function(k){
+    // Word-boundary aware: require non-word char (or start) on both sides.
+    // Use a capturing group so we can uppercase and preserve spacing.
+    var re=new RegExp('(?<![\\w(])('+k+')(?![\\w])', 'gi');
+    v=v.replace(re, function(_,m){ return '\n'+m.toUpperCase(); });
+  });
+
+  // ── Step 4: AND / OR — only break when NOT inside Oracle (+) join syntax ──
+  // Oracle old-style: col(+) = col  — the "(+)" is never preceded/followed by AND/OR
+  // We break AND/OR only when they are clause-level conjunctions:
+  // i.e. preceded by a non-operator character (closing paren, word, quote placeholder)
+  v=v.replace(/(?<=[\w\x00)])\s+(AND|OR)\s+(?=[\w\x00('])/gi, function(_,kw){
+    return '\n  '+kw.toUpperCase()+' ';
+  });
+
+  // ── Step 5: Split comma lists in SELECT and FROM clauses onto separate lines ──
+  // Handles: SELECT col1, col2  AND  FROM tbl1, tbl2 (Oracle old-style joins)
+  (function(){
+    // Split a string by top-level commas (ignores commas inside parens)
+    function splitTopLevel(str){
+      var parts=[], cur='', d=0;
+      for(var i=0;i<str.length;i++){
+        var c=str[i];
+        if(c==='(') d++;
+        if(c===')') d--;
+        if(c===',' && d===0){ parts.push(cur.trim()); cur=''; }
+        else cur+=c;
+      }
+      if(cur.trim()) parts.push(cur.trim());
+      return parts;
+    }
+
+    var lines=v.split('\n'), out=[];
+    var clause=null; // 'select' | 'from' | null
+
+    lines.forEach(function(line){
+      var trimmed=line.trim();
+
+      // Detect clause changes
+      if(/^SELECT\b/i.test(trimmed))       clause='select';
+      else if(/^FROM\b/i.test(trimmed))    clause='from';
+      else if(/^(WHERE|JOIN|LEFT|RIGHT|INNER|FULL|CROSS|NATURAL|ORDER|GROUP|HAVING|UNION|INTERSECT|MINUS|CONNECT|START|PIVOT|MERGE)\b/i.test(trimmed)) clause=null;
+
+      if(clause==='select'){
+        var kwMatch=trimmed.match(/^(SELECT\s+(?:DISTINCT\s+|ALL\s+)?)/i);
+        var prefix=kwMatch?kwMatch[1]:'';
+        var rest=trimmed.slice(prefix.length);
+        var parts=splitTopLevel(rest);
+        if(parts.length>1){
+          var indent=' '.repeat(prefix.length);
+          out.push(prefix+parts[0]+',');
+			for(var j=1;j<parts.length;j++){
+			  var isLast=(j===parts.length-1);
+			  out.push(indent+parts[j]+(isLast?'':','));
+			}
+          return;
+        }
+      } else if(clause==='from'){
+        var fwMatch=trimmed.match(/^(FROM\s+)/i);
+        var fprefix=fwMatch?fwMatch[1]:'';
+        var frest=trimmed.slice(fprefix.length);
+        var fparts=splitTopLevel(frest);
+        if(fparts.length>1){
+          var findent=' '.repeat(fprefix.length);
+          out.push(fprefix+fparts[0]+',');
+			for(var j=1;j<fparts.length;j++){
+			  var isLast=(j===fparts.length-1);
+			  out.push(findent+fparts[j]+(isLast?'':','));
+			}
+          clause=null; // done splitting FROM list
+          return;
+        }
+      }
+
+      out.push(line);
+    });
+    v=out.join('\n');
+  })();
+
+  // ── Step 6: Restore string literals ──
+  v=v.replace(/\x00STR(\d+)\x00/g, function(_,i){ return literals[parseInt(i)]; });
+
+  // ── Step 7: Clean up leading/trailing blank lines ──
+  v=v.replace(/^\n+/,'').replace(/\n{3,}/g,'\n\n').trim();
+
+  ta.value=v; doHL(); doLN();
 }
 function changeFontSize(d){fontSize=Math.max(10,Math.min(20,fontSize+d));['sqled','hl','lnums'].forEach(function(id){document.getElementById(id).style.fontSize=fontSize+'px';});}
 function findInSQL(){var q=prompt('Find in SQL:');if(!q)return;var ta=document.getElementById('sqled'),idx=ta.value.toLowerCase().indexOf(q.toLowerCase());if(idx>-1){ta.focus();ta.setSelectionRange(idx,idx+q.length);}else alert('"'+q+'" not found.');}
