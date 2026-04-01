@@ -1326,19 +1326,24 @@ function openBindVarsModal(sql, params) {
   var body = document.getElementById('bv-body');
   var html = '';
   params.forEach(function(p) {
-    html += '<div class="bv-field">'
+    html += '<div class="bv-field" style="display:flex;flex-direction:column;gap:4px;">'
       + '<label>:' + esc(p) + '</label>'
-      + '<input type="text" id="bv-input-' + esc(p) + '" autocomplete="off" spellcheck="false" placeholder="Enter value…"/>'
+      + '<div style="display:flex;gap:6px;align-items:center;">'
+      + '<input type="text" id="bv-input-' + esc(p) + '" autocomplete="off" spellcheck="false" placeholder="Enter value…" style="flex:1;"/>'
+      + '<select id="bv-type-' + esc(p) + '" title="Data type" style="padding:3px 6px;border:1px solid #374151;border-radius:3px;background:#0f172a;color:#e5e7eb;font-size:11px;cursor:pointer;outline:none;">'
+      + '<option value="string" selected>VARCHAR</option>'
+      + '<option value="number">NUMBER</option>'
+      + '<option value="date">DATE</option>'
+      + '</select>'
+      + '</div>'
       + '</div>';
   });
   body.innerHTML = html;
 
   document.getElementById('bv-overlay').classList.add('show');
-  // Focus first input
   var first = body.querySelector('input');
   if (first) setTimeout(function() { first.focus(); }, 80);
 
-  // Allow Enter on last field to submit
   var inputs = body.querySelectorAll('input');
   inputs.forEach(function(inp, idx) {
     inp.addEventListener('keydown', function(e) {
@@ -1363,13 +1368,25 @@ function bvCancel() {
 function bvSubmit() {
   var sql = _bvPendingSQL;
   _bvParams.forEach(function(p) {
-    var el = document.getElementById('bv-input-' + p);
-    var val = el ? el.value : '';
-    // Replace :PARAM (case-insensitive, whole-word boundary)
-    var re = new RegExp('(?<![:])\:' + p + '(?![A-Za-z0-9_])', 'gi');
-    // Wrap in single quotes if not a number
-    var isNum = /^-?\d+(\.\d+)?$/.test(val.trim());
-    sql = sql.replace(re, isNum ? val : ("'" + val.replace(/'/g, "''") + "'"));
+    var el    = document.getElementById('bv-input-' + p);
+    var tsel  = document.getElementById('bv-type-' + p);
+    var val   = el ? el.value : '';
+    var dtype = tsel ? tsel.value : 'string';
+    var re    = new RegExp('(?<![:])\:' + p + '(?![A-Za-z0-9_])', 'gi');
+
+    var replacement;
+    if (dtype === 'number') {
+      // Numeric — no quotes; fallback to 0 if invalid
+      replacement = /^-?\d+(\.\d+)?$/.test(val.trim()) ? val.trim() : '0';
+    } else if (dtype === 'date') {
+      // DATE — wrap in TO_DATE for Oracle; adjust format if needed
+      replacement = "TO_DATE('" + val.replace(/'/g, "''") + "','YYYY-MM-DD')";
+    } else {
+      // STRING / VARCHAR — always wrap in single quotes (safe default)
+      replacement = "'" + val.replace(/'/g, "''") + "'";
+    }
+
+    sql = sql.replace(re, replacement);
   });
   document.getElementById('bv-overlay').classList.remove('show');
   _bvPendingSQL = '';
