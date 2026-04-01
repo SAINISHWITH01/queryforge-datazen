@@ -552,6 +552,32 @@ thead .rn-col{background:#1e293b !important;color:#6b7280;font-weight:600 !impor
 }
 .sir-input:focus{border-color:#60a5fa;}
 .sir-count{font-size:11px;color:#9ca3af;white-space:nowrap;}
+
+/* ══ AUTOCOMPLETE ══ */
+#ac-dropdown{
+  position:fixed;z-index:9999;
+  background:#1e293b;border:1px solid #334155;
+  border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,.7);
+  max-height:220px;overflow-y:auto;min-width:200px;max-width:360px;
+  display:none;font-family:'Fira Code',monospace;font-size:12px;
+}
+#ac-dropdown::-webkit-scrollbar{width:4px;}
+#ac-dropdown::-webkit-scrollbar-thumb{background:#334155;border-radius:2px;}
+.ac-item{
+  padding:6px 12px;cursor:pointer;color:#e2e8f0;
+  display:flex;align-items:center;gap:8px;white-space:nowrap;
+}
+.ac-item:hover,.ac-item.ac-sel{background:#334155;}
+.ac-item.ac-sel{background:#1d4ed8;}
+.ac-badge{
+  font-size:9px;padding:1px 5px;border-radius:3px;
+  font-family:'Segoe UI',sans-serif;font-weight:600;flex-shrink:0;
+}
+.ac-badge.kw{background:#1e3a8a;color:#93c5fd;}
+.ac-badge.tbl{background:#14532d;color:#86efac;}
+.ac-badge.col{background:#3b0764;color:#d8b4fe;}
+.ac-badge.fn{background:#431407;color:#fdba74;}
+.ac-match{color:#fbbf24;}
 </style>
 </head>
 <body>
@@ -603,6 +629,7 @@ thead .rn-col{background:#1e293b !important;color:#6b7280;font-weight:600 !impor
     <div class="sep"></div>
     <button class="tbtn" title="Export to CSV" onclick="exportCSV()">📥</button>
     <button class="tbtn" title="Find in SQL (Ctrl+F)" onclick="findInSQL()">🔍</button>
+	<button class="tbtn" title="Load table/column metadata for autocomplete" onclick="loadMetadata()" style="font-size:10px;width:auto;padding:0 6px;">⚡ Meta</button>
     <div class="spin" id="spinner"></div>
     <div class="conn-area">
       <select class="csel" id="csel" onchange="selectConn()"><option value="">— Select a connection —</option></select>
@@ -1563,6 +1590,301 @@ function sirKeyNav(e) {
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 // Escape for JS string inside single-quote onclick attribute
 function escJ(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'').replace(/\n/g,'');}
+
+/* ══════════════════════════════════════════
+   AUTOCOMPLETE ENGINE
+══════════════════════════════════════════ */
+(function(){
+  var dropdown, selIdx = -1, acItems = [], acWord = '', acWordStart = 0;
+
+  var KW_LIST = [
+    'SELECT','FROM','WHERE','AND','OR','NOT','IN','EXISTS','BETWEEN','LIKE','IS','NULL',
+    'JOIN','LEFT JOIN','RIGHT JOIN','INNER JOIN','OUTER JOIN','FULL JOIN','CROSS JOIN',
+    'ON','GROUP BY','ORDER BY','HAVING','UNION','UNION ALL','DISTINCT','AS','LIMIT',
+    'OFFSET','INSERT INTO','VALUES','UPDATE','SET','DELETE FROM','CREATE TABLE',
+    'DROP TABLE','ALTER TABLE','ADD COLUMN','WITH','CASE','WHEN','THEN','ELSE','END',
+    'ROWNUM','FETCH NEXT','ROWS ONLY','CONNECT BY','PRIOR','LEVEL','PIVOT','MERGE',
+    'USING','MATCHED','ASC','DESC','COMMIT','ROLLBACK','TRUNCATE','DUAL','SYSDATE',
+    'SYSTIMESTAMP','BEGIN','DECLARE','RETURN'
+  ];
+  var FN_LIST = [
+    'COUNT(','SUM(','AVG(','MAX(','MIN(','COALESCE(','NVL(','NVL2(','DECODE(',
+    'TRIM(','LTRIM(','RTRIM(','UPPER(','LOWER(','SUBSTR(','INSTR(','LENGTH(',
+    'TO_DATE(','TO_CHAR(','TO_NUMBER(','TO_TIMESTAMP(','TRUNC(','ROUND(','FLOOR(',
+    'CEIL(','MOD(','ABS(','SIGN(','POWER(','SQRT(','CONCAT(','REPLACE(','TRANSLATE(',
+    'LPAD(','RPAD(','RANK(','DENSE_RANK(','ROW_NUMBER(','LEAD(','LAG(','OVER(',
+    'PARTITION BY','LISTAGG(','EXTRACT(','MONTHS_BETWEEN(','ADD_MONTHS(','LAST_DAY(',
+    'NEXT_DAY(','CAST(','NULLIF(','GREATEST(','LEAST(','REGEXP_LIKE(','REGEXP_SUBSTR(',
+    'REGEXP_REPLACE(','SYS_GUID(','WM_CONCAT('
+  ];
+
+  function init(){
+    dropdown = document.createElement('div');
+    dropdown.id = 'ac-dropdown';
+    document.body.appendChild(dropdown);
+
+    var ta = document.getElementById('sqled');
+    ta.addEventListener('input', onInput);
+    ta.addEventListener('keydown', onKeyDown, true); // capture so we intercept before handleKeys
+    ta.addEventListener('blur', function(){ setTimeout(hide, 150); });
+    document.addEventListener('mousedown', function(e){
+      if(e.target.closest('#ac-dropdown')) return;
+      hide();
+    });
+  }
+
+  /* ── Get word being typed ── */
+  function getWordAtCursor(ta){
+    var pos = ta.selectionStart, val = ta.value;
+    var start = pos;
+    // Walk back through word chars (letters, digits, _, $, .)
+    while(start > 0 && /[\w$.]/.test(val[start-1])) start--;
+    return { word: val.slice(start, pos), start: start, end: pos };
+  }
+
+  /* ── Detect SQL context before cursor ── */
+  function getContext(val, cursorPos){
+    var before = val.slice(0, cursorPos).toUpperCase().replace(/\s+/g,' ');
+    // What keyword was most recently used?
+    var ctxKws = ['SELECT','FROM','WHERE','SET','ON','HAVING','GROUP BY','ORDER BY',
+                  'JOIN','LEFT JOIN','RIGHT JOIN','INNER JOIN','OUTER JOIN','VALUES','INTO'];
+    var lastKw = '', lastIdx = -1;
+    ctxKws.forEach(function(k){
+      var idx = before.lastIndexOf(k);
+      if(idx > lastIdx){ lastIdx = idx; lastKw = k; }
+    });
+
+    // Tables already referenced in the query (after FROM / JOIN keywords)
+    var tables = [];
+    var tblRe = /(?:FROM|JOIN)\s+([A-Z0-9_$#]+)/gi;
+    var m;
+    while((m = tblRe.exec(val)) !== null){
+      tables.push(m[1].toUpperCase());
+    }
+    return { lastKw: lastKw, tables: tables };
+  }
+
+  /* ── Build suggestion list ── */
+  function getSuggestions(word, val, cursorPos){
+    if(word.length < 1) return [];
+    var wu = word.toUpperCase();
+    var ctx = getContext(val, cursorPos);
+    var results = [];
+
+    // 1. Table suggestions — after FROM / JOIN
+    if(['FROM','JOIN','LEFT JOIN','RIGHT JOIN','INNER JOIN','OUTER JOIN'].indexOf(ctx.lastKw) > -1){
+      Object.keys(acMeta).forEach(function(t){
+        if(t.toUpperCase().startsWith(wu)) results.push({label:t, type:'tbl'});
+      });
+    }
+
+    // 2. Column suggestions — after SELECT / WHERE / SET / ON / HAVING / ORDER BY / GROUP BY
+    var colCtx = ['SELECT','WHERE','SET','ON','HAVING','GROUP BY','ORDER BY'];
+    if(colCtx.indexOf(ctx.lastKw) > -1){
+      // Columns from tables already mentioned in query
+      var colsSeen = new Set();
+      ctx.tables.forEach(function(t){
+        var cols = acMeta[t] || acMeta[t.toUpperCase()] || [];
+        cols.forEach(function(c){
+          if(c.toUpperCase().startsWith(wu) && !colsSeen.has(c)){
+            colsSeen.add(c);
+            results.push({label:c, type:'col', table:t});
+          }
+        });
+      });
+      // If no tables resolved yet, show all columns matching
+      if(!ctx.tables.length){
+        var allSeen = new Set();
+        Object.keys(acMeta).forEach(function(t){
+          (acMeta[t]||[]).forEach(function(c){
+            if(c.toUpperCase().startsWith(wu) && !allSeen.has(c)){
+              allSeen.add(c);
+              results.push({label:c, type:'col', table:t});
+            }
+          });
+        });
+      }
+    }
+
+    // 3. SQL Functions
+    FN_LIST.forEach(function(f){
+      if(f.toUpperCase().startsWith(wu)) results.push({label:f, type:'fn'});
+    });
+
+    // 4. Keywords (always available)
+    KW_LIST.forEach(function(k){
+      if(k.toUpperCase().startsWith(wu)) results.push({label:k, type:'kw'});
+    });
+
+    // Deduplicate and limit
+    var seen = new Set(), final = [];
+    results.forEach(function(r){
+      var key = r.type+':'+r.label;
+      if(!seen.has(key)){ seen.add(key); final.push(r); }
+    });
+    return final.slice(0, 30);
+  }
+
+  /* ── Position dropdown under cursor ── */
+  function getCaretCoords(ta){
+    var div = document.createElement('div');
+    var style = window.getComputedStyle(ta);
+    ['fontFamily','fontSize','fontWeight','lineHeight','letterSpacing',
+     'padding','paddingTop','paddingLeft','paddingRight','paddingBottom',
+     'border','borderTop','borderLeft','wordWrap','whiteSpace','width'].forEach(function(p){
+      div.style[p] = style[p];
+    });
+    div.style.position = 'absolute';
+    div.style.visibility = 'hidden';
+    div.style.whiteSpace = 'pre-wrap';
+    div.style.wordBreak = 'break-word';
+    div.style.top = '-9999px';
+    div.style.left = '-9999px';
+    document.body.appendChild(div);
+
+    var before = ta.value.slice(0, ta.selectionStart);
+    div.textContent = before;
+    var span = document.createElement('span');
+    span.textContent = '|';
+    div.appendChild(span);
+
+    var taRect = ta.getBoundingClientRect();
+    var spanRect = span.getBoundingClientRect();
+    var divRect = div.getBoundingClientRect();
+
+    document.body.removeChild(div);
+
+    // Account for textarea scroll
+    var x = taRect.left + (spanRect.left - divRect.left) - ta.scrollLeft;
+    var y = taRect.top  + (spanRect.top  - divRect.top)  - ta.scrollTop;
+    return { x: x, y: y };
+  }
+
+  function show(items, ta){
+    if(!items.length){ hide(); return; }
+    acItems = items;
+    selIdx = -1;
+
+    var html = items.map(function(item, i){
+      var badge = '<span class="ac-badge '+item.type+'">'
+        + (item.type==='tbl'?'TABLE':item.type==='col'?'COL':item.type==='fn'?'FN':'KW')
+        + '</span>';
+      var label = esc(item.label);
+      if(acWord){
+        var re = new RegExp('^('+acWord.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','i');
+        label = label.replace(re,'<span class="ac-match">$1</span>');
+      }
+      return '<div class="ac-item" data-idx="'+i+'" onmousedown="event.preventDefault()" onclick="_acPick('+i+')">'+badge+' '+label+'</div>';
+    }).join('');
+    dropdown.innerHTML = html;
+    dropdown.style.display = 'block';
+
+    // Position
+    var coords = getCaretCoords(ta);
+    var lineH = parseInt(window.getComputedStyle(ta).lineHeight) || 20;
+    var top = coords.y + lineH + 4;
+    var left = coords.x;
+
+    // Clamp to viewport
+    if(left + 240 > window.innerWidth) left = window.innerWidth - 244;
+    if(top + 220 > window.innerHeight) top = coords.y - 224;
+    dropdown.style.top  = top + 'px';
+    dropdown.style.left = left + 'px';
+  }
+
+  function hide(){ dropdown.style.display='none'; selIdx=-1; acItems=[]; }
+
+  function highlight(idx){
+    dropdown.querySelectorAll('.ac-item').forEach(function(el,i){
+      el.classList.toggle('ac-sel', i===idx);
+    });
+    var sel = dropdown.querySelectorAll('.ac-item')[idx];
+    if(sel) sel.scrollIntoView({block:'nearest'});
+  }
+
+  /* ── Accept suggestion ── */
+  window._acPick = function(idx){
+    var item = acItems[idx];
+    if(!item) return;
+    var ta = document.getElementById('sqled');
+    var val = ta.value;
+    var insert = item.label;
+    ta.value = val.slice(0, acWordStart) + insert + val.slice(acWordStart + acWord.length);
+    var newPos = acWordStart + insert.length;
+    ta.selectionStart = ta.selectionEnd = newPos;
+    ta.focus();
+    hide();
+    doHL(); doLN();
+  };
+
+  function onInput(){
+    var ta = document.getElementById('sqled');
+    var w = getWordAtCursor(ta);
+    acWord = w.word;
+    acWordStart = w.start;
+    if(!acWord){ hide(); return; }
+    var items = getSuggestions(acWord, ta.value, ta.selectionStart);
+    show(items, ta);
+  }
+
+  function onKeyDown(e){
+    if(dropdown.style.display === 'none') return;
+    if(e.key === 'ArrowDown'){
+      e.preventDefault(); e.stopPropagation();
+      selIdx = (selIdx + 1) % acItems.length;
+      highlight(selIdx); return;
+    }
+    if(e.key === 'ArrowUp'){
+      e.preventDefault(); e.stopPropagation();
+      selIdx = (selIdx - 1 + acItems.length) % acItems.length;
+      highlight(selIdx); return;
+    }
+    if(e.key === 'Enter' || e.key === 'Tab'){
+      if(selIdx > -1){
+        e.preventDefault(); e.stopPropagation();
+        _acPick(selIdx); return;
+      }
+      hide(); return;
+    }
+    if(e.key === 'Escape'){ e.preventDefault(); hide(); return; }
+  }
+
+  /* ── Init on DOM ready ── */
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+
+/* ══════════════════════════════════════════
+   LOAD METADATA (Tables + Columns)
+   Call this after connecting, or manually.
+   Uses ALL_TAB_COLUMNS via your existing SQL engine.
+══════════════════════════════════════════ */
+function loadMetadata(){
+  if(!activeConn){ alert('Select a connection first.'); return; }
+  setStage('Loading metadata…');
+  var sql = "SELECT TABLE_NAME, COLUMN_NAME FROM ALL_TAB_COLUMNS WHERE OWNER = SYS_CONTEXT('USERENV','CURRENT_SCHEMA') ORDER BY TABLE_NAME, COLUMN_ID";
+  var auth = basicAuth(activeConn), conn = activeConn;
+  soapCall(conn.url+'/xmlpserver/services/ExternalReportWSSService', buildRunReportSOAP(conn, sql), auth)
+    .then(function(resp){ return resp.text(); })
+    .then(function(xml){
+      var p = parseCSVResponse(xml);
+      if(p.error || !p.rows.length){ setStage('Metadata: no data'); return; }
+      acMeta = {};
+      p.rows.forEach(function(r){
+        var t = (r['TABLE_NAME']||r['table_name']||'').trim();
+        var c = (r['COLUMN_NAME']||r['column_name']||'').trim();
+        if(t && c){
+          if(!acMeta[t]) acMeta[t] = [];
+          acMeta[t].push(c);
+        }
+      });
+      acMetaLoaded = true;
+      var tCount = Object.keys(acMeta).length;
+      setStage('✓ Metadata: '+tCount+' tables loaded');
+      setTimeout(function(){ setStage(''); }, 3000);
+    })
+    .catch(function(){ setStage('Metadata load failed'); setTimeout(function(){ setStage(''); },3000); });
+}
 </script>
 </body>
 </html>
