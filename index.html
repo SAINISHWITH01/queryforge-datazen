@@ -907,9 +907,25 @@ function checkBanner(){document.getElementById('setup-banner').classList.toggle(
 var PROXY_URL='https://queryforge-backend-jjxx.onrender.com',proxyAvailable=false,proxyChecked=false;
 function checkProxy(cb){
   if(proxyChecked){cb(proxyAvailable);return;}
-  fetch(PROXY_URL,{method:'OPTIONS',signal:AbortSignal.timeout(1500)})
-    .then(function(){proxyAvailable=true;proxyChecked=true;updateProxyStatus(true);cb(true);})
-    .catch(function(){proxyAvailable=false;proxyChecked=true;updateProxyStatus(false);cb(false);});
+
+  // Show "checking" state visually while we wait
+  var el=document.getElementById('proxy-badge');
+  if(el){el.textContent='⏳ Checking proxy…';el.style.color='#92400e';el.style.background='#fef3c7';}
+
+  // Render.com free tier cold-starts can take 15-30s — use a long timeout
+  fetch(PROXY_URL,{method:'OPTIONS',signal:AbortSignal.timeout(20000)})
+    .then(function(){
+      proxyAvailable=true;proxyChecked=true;
+      updateProxyStatus(true);cb(true);
+    })
+    .catch(function(){
+      // First attempt failed — wait 3s and retry once before giving up
+      setTimeout(function(){
+        fetch(PROXY_URL,{method:'OPTIONS',signal:AbortSignal.timeout(15000)})
+          .then(function(){proxyAvailable=true;proxyChecked=true;updateProxyStatus(true);cb(true);})
+          .catch(function(){proxyAvailable=false;proxyChecked=true;updateProxyStatus(false);cb(false);});
+      },3000);
+    });
 }
 function updateProxyStatus(ok){
   var el=document.getElementById('proxy-badge');if(!el)return;
@@ -952,16 +968,56 @@ function parseCSV(text){
 
 /* ══════════ RUN QUERY ══════════ */
 function runQuery(){
-  if(running)return;
-  var ta=document.getElementById('sqled');tabs[activeTab].sql=ta.value;
-  var sql = ta.value.trim();
-  if(!activeConn){showErr('No connection selected.\nChoose or add a connection first.');return;}
-  if(!sql){showErr('Write a SQL query first.');return;}
-  sql=sql.replace(/;\s*$/,'');
+  // Only reset if stuck from a previously cancelled bind-variable modal,
+  // NOT during an actual live query (_executeSQL sets running=true and resets in .finally)
+  if(running && !setLoading._active){ running=false; setLoading(false); setStage(''); }
 
-  // ★ Detect bind variables — show popup if any found
+  var ta = document.getElementById('sqled');
+  tabs[activeTab].sql = ta.value;
+
+  var fullText  = ta.value;
+  var cursorPos = ta.selectionStart;
+  var selStart  = ta.selectionStart;
+  var selEnd    = ta.selectionEnd;
+  var sql = '';
+  var mode = '';
+
+  if(selEnd > selStart){
+    // MODE 1: User has text selected → run exactly that
+    sql  = fullText.slice(selStart, selEnd).trim();
+    mode = 'selection';
+  } else {
+    // MODE 2: No selection → find the statement the cursor sits in
+    var stmts = [];
+    var re = /[^;]+/g, m;
+    while((m = re.exec(fullText)) !== null){
+      var s = m.index, e = m.index + m[0].length;
+      var text = m[0].trim();
+      if(text) stmts.push({ text: text, start: s, end: e });
+    }
+    var found = null;
+    for(var i = 0; i < stmts.length; i++){
+      if(cursorPos >= stmts[i].start && cursorPos <= stmts[i].end + 1){
+        found = stmts[i]; break;
+      }
+    }
+    if(!found && stmts.length) found = stmts[stmts.length - 1];
+    sql  = found ? found.text : fullText.trim();
+    mode = stmts.length > 1 ? 'statement' : 'full';
+  }
+
+  if(!activeConn){ showErr('No connection selected.\nChoose or add a connection first.'); return; }
+  if(!sql){ showErr(mode === 'selection' ? 'Selected text is empty.' : 'Write a SQL query first.'); return; }
+
+  sql = sql.replace(/;\s*$/, '');
+
+  setStage(
+    mode === 'selection' ? '▶ Running selection…' :
+    mode === 'statement' ? '▶ Running statement at cursor…' : ''
+  );
+
   var params = detectBindVars(sql);
-  if (params.length > 0) {
+  if(params.length > 0){
     running = true;
     setLoading(true);
     setStage('Waiting for bind variable values…');
@@ -970,7 +1026,6 @@ function runQuery(){
   }
   _executeSQL(sql);
 }
-
 function _executeSQL(sql){
   var val = document.getElementById('fetchrows').value;
   var limit = (val === 'ALL') ? Infinity : parseInt(val) || 100;
@@ -1290,7 +1345,11 @@ function findInSQL(){var q=prompt('Find in SQL:');if(!q)return;var ta=document.g
 
 /* ══════════ STATUS ══════════ */
 function setStatus(state,label){document.getElementById('sdot').className='sdot'+(state?' '+state:'');document.getElementById('sconn').textContent=label||'Not connected';}
-function setLoading(on){document.getElementById('spinner').style.display=on?'inline-block':'none';if(on)document.getElementById('sdot').className='sdot busy';}
+function setLoading(on){
+  setLoading._active=!!on;
+  document.getElementById('spinner').style.display=on?'inline-block':'none';
+  if(on)document.getElementById('sdot').className='sdot busy';
+}
 function setStage(msg){document.getElementById('sstage').textContent=msg;}
 function openHelp(){document.getElementById('help-overlay').classList.add('show');}
 
@@ -1362,7 +1421,8 @@ function bvCancel() {
   _bvParams = [];
   running = false;
   setLoading(false);
-  setStage('');
+  setStage('Cancelled');
+  setTimeout(function(){ setStage(''); }, 1500);
 }
 
 function bvSubmit() {
