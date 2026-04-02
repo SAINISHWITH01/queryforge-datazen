@@ -2,6 +2,13 @@ const http  = require('http');
 const https = require('https');
 const url   = require('url');
 
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
 const PORT = process.env.PORT || 3737;
 
 // ── ANSI colors for nice terminal output ──
