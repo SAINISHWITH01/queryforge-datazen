@@ -29,11 +29,19 @@ var server = http.createServer(function(req, res) {
 // Parse body
 function getBody(req, callback) {
   let body = '';
-  req.on('data', chunk => body += chunk);
+
+  req.on('data', chunk => {
+    body += chunk.toString();
+  });
+
   req.on('end', () => {
+    if (!body) return callback({});
+
     try {
-      callback(JSON.parse(body));
-    } catch {
+      const parsed = JSON.parse(body);
+      callback(parsed);
+    } catch (e) {
+      console.error("JSON parse error:", e);
       callback({});
     }
   });
@@ -43,7 +51,10 @@ function getBody(req, callback) {
 if (req.url === '/register' && req.method === 'POST') {
   return getBody(req, async data => {
     const { name, username, email, password } = data;
-
+  if (!name || !username || !email || !password) {
+  res.writeHead(400, {'Content-Type':'application/json'});
+  return res.end(JSON.stringify({ message: 'Missing fields' }));
+}
     try {
       const check = await pool.query(
         'SELECT * FROM users WHERE username=$1 OR email=$2',
