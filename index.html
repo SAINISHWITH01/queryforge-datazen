@@ -32,9 +32,10 @@ body{
   flex-shrink:0;
 }
 .titlebar-logo{
-  font-size:16px;
-  font-weight:600;
-  letter-spacing:0.5px;
+  font-size:20px;        /* bigger */
+  font-weight:700;       /* bold */
+  color:#ffffff;         /* bright white */
+  letter-spacing:0.8px;  /* slight spacing (premium look) */
 }
 .titlebar-logo span{font-size:18px;}
 .titlebar-center{
@@ -44,7 +45,9 @@ body{
   opacity:.85;
   color:#9ca3af;
 }
-
+#title-conn {
+  display:none;
+}
 /* ── LAYOUT ── */
 .body-wrap{display:flex;flex:1;overflow:hidden;}
 
@@ -75,7 +78,7 @@ body{
 .tabbar{
   /*background:#0f172a;
   border-bottom:1px solid #1f2937;*/
-  background:#0b1220;   /* slightly darker than current */
+  background:#d1d5db;   /* slightly darker than current */
   border-bottom:1px solid #1e293b;
   height:34px;
   display:flex;
@@ -97,7 +100,7 @@ body{
   white-space:nowrap;
   font-size:12px;
   /*color:#9ca3af;*/
-  color:#94a3b8;              /* soft gray */
+  color:#94a3b8;              /*  soft gray */
   background:transparent;
   border:1px solid transparent;
   border-bottom:none;
