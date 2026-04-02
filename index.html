@@ -98,15 +98,25 @@ body{
 
 /* ── TOOLBAR ── */
 .toolbar{
-  background:#111827;border-bottom:1px solid #1f2937;
+  /* ── background:#111827;
+  border-bottom:1px solid #1f2937; ── */
+  background:#ffffff;              /* white background */
+  border-bottom:1px solid #e5e7eb;
   height:36px;display:flex;align-items:center;
   padding:0 8px;gap:4px;flex-shrink:0;
 }
 .flabel{font-size:11px;color:#9ca3af;}
 .finput{
   width:60px;padding:3px 6px;
-  border:1px solid #1f2937;border-radius:3px;
-  font-size:12px;background:#0f172a;color:#e5e7eb;outline:none;
+ /* border:1px solid #1f2937; */
+  border-radius:3px;
+  font-size:12px;
+ /* background:#0f172a;
+  color:#e5e7eb; */
+  background:#ffffff;
+  color:#000000;
+  border:1px solid #d1d5db;
+  outline:none;
 }
 .finput:focus{border-color:#e5e7eb;}
 .sep{width:1px;height:20px;background:#1f2937;margin:0 3px;}
@@ -114,10 +124,17 @@ body{
   width:27px;height:27px;border-radius:3px;
   border:1px solid transparent;background:transparent;
   cursor:pointer;display:flex;align-items:center;
-  justify-content:center;font-size:13px;color:#9ca3af;
+  justify-content:center;font-size:13px;
+  /* color:#9ca3af; */
+  color:#374151;   /* dark text */
   transition:all .1s;position:relative;
 }
-.tbtn:hover{background:#1f2937;color:#e5e7eb;}
+.tbtn:hover{
+	/* background:#1f2937;
+	color:#e5e7eb; */
+	background:#f3f4f6;
+	color:#000;
+}
 .tbtn:active{transform:scale(.96);}
 .tbtn.run{color:#22c55e;font-size:15px;}
 .tbtn.stop{color:#ef4444;}
@@ -132,18 +149,30 @@ body{
 .conn-area{margin-left:auto;display:flex;align-items:center;gap:6px;}
 .csel{
   min-width:190px;padding:4px 28px 4px 10px;
-  border:1px solid #374151;border-radius:4px;
-  background:#0f172a;font-size:12px;color:#e5e7eb;
+  /*border:1px solid #374151;*/
+  border-radius:4px;
+  /*background:#0f172a;*/
+  font-size:12px;
+  /*color:#e5e7eb;*/
   outline:none;cursor:pointer;
+  background:#ffffff;
+  color:#000000;
+  border:1px solid #d1d5db;
 }
 .csel:focus{border-color:#e5e7eb;}
 .cadd{
   padding:4px 10px;border:1px solid #e5e7eb;
-  background:transparent;color:#e5e7eb;
+  /*background:transparent;
+  color:#e5e7eb;*/
+  color:#000000;
+  border:1px solid #d1d5db;
   border-radius:4px;font-size:11px;cursor:pointer;
   font-weight:500;white-space:nowrap;
 }
-.cadd:hover{background:rgba(229,231,235,0.1);}
+.cadd:hover{
+	/*background:rgba(229,231,235,0.1);*/
+	background:#f3f4f6;
+	}
 .spin{
   width:13px;height:13px;border:2px solid #1f2937;
   border-top-color:#22c55e;border-radius:50%;
