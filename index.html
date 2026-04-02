@@ -938,7 +938,8 @@ function saveConn(){
   var url=document.getElementById('mc-url').value.trim().replace(/\/$/,'');
   var user=document.getElementById('mc-user').value.trim();
   var pass=document.getElementById('mc-pass').value;
-  var path=document.getElementById('mc-path').value.trim()||'/Custom/CloudSQL/CloudSQLReport_csv.xdo';
+  //var path=document.getElementById('mc-path').value.trim()||'/Custom/CloudSQL/CloudSQLReport_csv.xdo';
+  var path = '/Custom/CloudSQL/CloudSQLReport_csv.xdo';
   if(!name){setMStatus('err','Enter a connection name');return;}
   if(!url){setMStatus('err','Enter the Oracle URL');return;}
   if(!user){setMStatus('err','Enter username');return;}
