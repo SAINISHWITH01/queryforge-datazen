@@ -24,7 +24,7 @@ function log(level, msg) {
 var server = http.createServer(function(req, res) {
 
   // ── SIMPLE USER STORAGE ──
-if (!global.users) global.users = [];
+//if (!global.users) global.users = [];
 
 // Parse body
 function getBody(req, callback) {
@@ -41,47 +41,63 @@ function getBody(req, callback) {
 
 // ── REGISTER ──
 if (req.url === '/register' && req.method === 'POST') {
-  return getBody(req, data => {
+  return getBody(req, async data => {
     const { name, username, email, password } = data;
 
-    if (!name || !username || !email || !password) {
-      res.writeHead(400);
-      return res.end(JSON.stringify({ message: 'All fields required' }));
+    try {
+      const check = await pool.query(
+        'SELECT * FROM users WHERE username=$1 OR email=$2',
+        [username, email]
+      );
+
+      if (check.rows.length > 0) {
+        res.writeHead(400, {'Content-Type':'application/json'});
+        return res.end(JSON.stringify({ message: 'User exists' }));
+      }
+
+      await pool.query(
+        'INSERT INTO users(name, username, email, password) VALUES($1,$2,$3,$4)',
+        [name, username, email, password]
+      );
+
+      res.writeHead(200, {'Content-Type':'application/json'});
+      res.end(JSON.stringify({ message: 'Registered' }));
+
+    } catch (err) {
+      console.error(err);
+      res.writeHead(500, {'Content-Type':'application/json'});
+      res.end(JSON.stringify({ message: 'DB error' }));
     }
-
-    const exists = global.users.find(u =>
-      u.username === username || u.email === email
-    );
-
-    if (exists) {
-      res.writeHead(400);
-      return res.end(JSON.stringify({ message: 'User exists' }));
-    }
-
-    global.users.push({ name, username, email, password });
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ message: 'Registered' }));
   });
 }
 
 // ── LOGIN ──
 if (req.url === '/login' && req.method === 'POST') {
-  return getBody(req, data => {
+  return getBody(req, async data => {
     const { identifier, password } = data;
 
-    const user = global.users.find(u =>
-      (u.username === identifier || u.email === identifier) &&
-      u.password === password
-    );
+    try {
+      const result = await pool.query(
+        'SELECT * FROM users WHERE (username=$1 OR email=$1) AND password=$2',
+        [identifier, password]
+      );
 
-    if (!user) {
-      res.writeHead(401);
-      return res.end(JSON.stringify({ message: 'Invalid credentials' }));
+      if (result.rows.length === 0) {
+        res.writeHead(401, {'Content-Type':'application/json'});
+        return res.end(JSON.stringify({ message: 'Invalid credentials' }));
+      }
+
+      res.writeHead(200, {'Content-Type':'application/json'});
+      res.end(JSON.stringify({
+        message: 'Login success',
+        user: result.rows[0]
+      }));
+
+    } catch (err) {
+      console.error(err);
+      res.writeHead(500, {'Content-Type':'application/json'});
+      res.end(JSON.stringify({ message: 'DB error' }));
     }
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ message: 'Login success', user }));
   });
 }
   
