@@ -796,6 +796,7 @@ function handleLogin() {
     const remember = document.getElementById('remember-me').checked;
 
     const sessionData = {
+      id: user.id,
       username: user.username,
       name: user.name,
       email: user.email,
