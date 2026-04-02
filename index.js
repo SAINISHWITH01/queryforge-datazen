@@ -189,55 +189,56 @@ var server = http.createServer(function(req, res) {
 
   // GET /connections?user_id=X — fetch all connections for a user
   if (req.url.startsWith('/connections') && req.method === 'GET') {
-    const parsedUrl = url.parse(req.url, true);
-    const user_id = parsedUrl.query.user_id;
+    return (async () => {
+      const parsedUrl = url.parse(req.url, true);
+      const user_id = parsedUrl.query.user_id;
 
-    if (!user_id) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ message: 'Missing user_id query param' }));
-    }
+      if (!user_id) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ message: 'Missing user_id query param' }));
+      }
 
-    try {
-      const result = await pool.query(
-        'SELECT * FROM connections WHERE user_id=$1 ORDER BY created_at ASC',
-        [user_id]
-      );
+      try {
+        const result = await pool.query(
+          'SELECT * FROM connections WHERE user_id=$1 ORDER BY created_at ASC',
+          [user_id]
+        );
 
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ connections: result.rows }));
-      log('OK', 'Fetched ' + result.rows.length + ' connections for user ' + user_id);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ connections: result.rows }));
+        log('OK', 'Fetched ' + result.rows.length + ' connections for user ' + user_id);
 
-    } catch (err) {
-      console.error(err);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ message: 'DB error' }));
-    }
-    return;
+      } catch (err) {
+        console.error(err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ message: 'DB error' }));
+      }
+    })();
   }
 
-  // DELETE /connections/:id — remove a connection
+  // DELETE /connections/:id - remove a connection
   var deleteMatch = req.url.match(/^\/connections\/(\d+)$/);
   if (deleteMatch && req.method === 'DELETE') {
     var connId = parseInt(deleteMatch[1], 10);
+    return (async () => {
+      try {
+        const result = await pool.query('DELETE FROM connections WHERE id=$1 RETURNING id', [connId]);
 
-    try {
-      const result = await pool.query('DELETE FROM connections WHERE id=$1 RETURNING id', [connId]);
+        if (result.rows.length === 0) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ message: 'Connection not found' }));
+        }
 
-      if (result.rows.length === 0) {
-        res.writeHead(404, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ message: 'Connection not found' }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ message: 'Connection deleted' }));
+        log('OK', 'Deleted connection id=' + connId);
+
+      } catch (err) {
+        console.error(err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ message: 'DB error' }));
       }
-
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ message: 'Connection deleted' }));
-      log('OK', 'Deleted connection id=' + connId);
-
-    } catch (err) {
-      console.error(err);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ message: 'DB error' }));
-    }
-    return;
+    })();
   }
 
   // ── PROXY (pass-through for everything else) ─────────────────
