@@ -40,11 +40,36 @@ body{
 .titlebar-logo span{font-size:18px;}
 .titlebar-center{
   position:absolute;
-  right:12px;
+  left:50%;
+  transform:translateX(-50%);
   font-size:12px;
   opacity:.85;
   color:#9ca3af;
 }
+.titlebar-user{
+  position:absolute;
+  right:14px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:12px;
+  color:#d1d5db;
+}
+.titlebar-user span{
+  font-weight:500;
+  color:#e5e7eb;
+}
+.btn-logout{
+  font-size:11px;
+  padding:4px 12px;
+  background:transparent;
+  color:#9ca3af;
+  border:1px solid #374151;
+  border-radius:5px;
+  cursor:pointer;
+  transition:all .2s;
+}
+.btn-logout:hover{background:#1f2937;color:#f87171;border-color:#f87171;}
 #title-conn {
   display:none;
 }
@@ -695,6 +720,10 @@ thead .rn-col{background:#1e293b !important;color:#6b7280;font-weight:600 !impor
 	QueryForge DataZen
   </div>
   <div class="titlebar-center" id="title-conn">No connection selected</div>
+  <div class="titlebar-user" id="titlebar-user" style="display:none;">
+    <span id="titlebar-username"></span>
+    <button class="btn-logout" onclick="doLogout()">Logout</button>
+  </div>
 </div>
 
 <div class="body-wrap">
@@ -936,11 +965,15 @@ var fpCol=null, fpAllValues=[], fpPending=new Set();
 
 /* ══════════ INIT ══════════ */
 window.onload=function(){
-  // Restore user session if available
-  var storedUser=sessionStorage.getItem('user_id');
-  if(!storedUser){
-    // Also try reading full user object saved by login3.html
-    try{var u=JSON.parse(sessionStorage.getItem('user')||'null');if(u&&u.id)sessionStorage.setItem('user_id',u.id);}catch(e){}
+  // Restore user session from qfdz_session (set by login.html)
+  var session=null;
+  try{
+    session=JSON.parse(sessionStorage.getItem('qfdz_session')||localStorage.getItem('qfdz_session')||'null');
+  }catch(e){}
+  if(session&&session.id){
+    // Show username + logout in titlebar
+    document.getElementById('titlebar-username').textContent=session.name||session.username;
+    document.getElementById('titlebar-user').style.display='flex';
   }
   loadConns();
   addTab();
@@ -1007,7 +1040,19 @@ function renderTabs(){
 }
 
 /* ══════════ CONNECTIONS ══════════ */
-function getCurrentUserId(){return sessionStorage.getItem('user_id');}
+function getCurrentUserId(){
+  try{
+    var s=JSON.parse(sessionStorage.getItem('qfdz_session')||localStorage.getItem('qfdz_session')||'null');
+    return s&&s.id?String(s.id):null;
+  }catch(e){return null;}
+}
+
+function doLogout(){
+  sessionStorage.removeItem('qfdz_session');
+  localStorage.removeItem('qfdz_session');
+  localStorage.removeItem('csWebConns');
+  window.location.href='https://queryforge-datazen.vercel.app/login.html';
+}
 
 async function loadConns(){
   var uid=getCurrentUserId();
