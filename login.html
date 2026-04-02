@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy"
+content="
+default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;
+connect-src 'self' https://queryforge-backend-jjxx.onrender.com;
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+font-src https://fonts.gstatic.com;
+script-src 'self' 'unsafe-inline';
+">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QueryForge DataZen</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    /* Matched to app's dark navy palette */
+    --bg:        #0d1117;
+    --bg2:       #161b22;
+    --bg3:       #1c2333;
+    --card:      #161b22;
+    --border:    rgba(48, 54, 72, 0.8);
+    --border2:   rgba(48, 54, 72, 1);
+    /* Accent: teal-green matching the "Server Active" badge in app */
+    --accent:    #3fb950;
+    --accent-d:  #2ea043;
+    --accent-glow: rgba(63,185,80,0.2);
+    /* Info blue matching toolbar icons */
+    --blue:      #58a6ff;
+    --blue-glow: rgba(88,166,255,0.15);
+    /* Orange matching metadata/warning in app footer */
+    --orange:    #f0883e;
+    /* Text */
+    --text:      #c9d1d9;
+    --text2:     #8b949e;
+    --text3:     #484f58;
+    --error:     #f85149;
+  }
+
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    font-family: 'Outfit', sans-serif;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Subtle background grid — matches app editor grid feel */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(48,54,72,0.18) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(48,54,72,0.18) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+  }
+
+  /* Glow spots */
+  .glow {
+    position: fixed; border-radius: 50%;
+    filter: blur(90px); pointer-events: none; z-index: 0;
+    animation: drift 14s ease-in-out infinite alternate;
+  }
+  .glow1 { width:400px;height:400px;background:rgba(63,185,80,0.07);top:-100px;left:-100px; }
+  .glow2 { width:350px;height:350px;background:rgba(88,166,255,0.06);bottom:-80px;right:-80px;animation-delay:-7s; }
+
+  @keyframes drift {
+    from { transform: translate(0,0); }
+    to   { transform: translate(40px,30px); }
+  }
+
+  /* ── Brand ── */
+  .brand {
+    position: relative; z-index: 10;
+    text-align: center; margin-bottom: 24px;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(-16px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  .brand-logo {
+    width: 48px; height: 48px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 12px;
+    box-shadow: 0 0 0 1px rgba(63,185,80,0.2), 0 4px 16px rgba(0,0,0,0.4);
+  }
+  .brand-logo svg { width: 22px; height: 22px; }
+
+  .brand-title {
+    font-size: 20px; font-weight: 700;
+    color: var(--text); letter-spacing: -0.3px;
+  }
+  .brand-title span { color: var(--accent); }
+
+  .brand-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text3);
+    margin-top: 4px; letter-spacing: 0.5px;
+  }
+
+  /* ── Card ── */
+  .card {
+    position: relative; z-index: 10;
+    width: 100%; max-width: 420px;
+    background: var(--card);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.02);
+    animation: fadeUp 0.5s 0.08s ease both;
+  }
+
+  /* Top status bar — like the app's title bar */
+  .card-titlebar {
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border2);
+    padding: 8px 16px;
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--text2);
+  }
+
+  .titlebar-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+
+  .dot-red   { background: #f85149; }
+  .dot-amber { background: #f0883e; }
+  .dot-green { background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
+
+  .titlebar-name { margin-left: 4px; color: var(--text); font-size: 12px; }
+
+  /* ── Tabs ── */
+  .card-body { padding: 24px 28px 28px; }
+
+  .tabs {
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--border2);
+    margin-bottom: 24px;
+  }
+
+  .tab-btn {
+    padding: 8px 18px; border: none;
+    background: transparent; color: var(--text2);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all 0.2s; margin-bottom: -1px;
+  }
+
+  .tab-btn:hover { color: var(--text); }
+
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ── Forms ── */
+  .form { display: none; }
+  .form.active { display: block; animation: fadeForm 0.25s ease; }
+
+  @keyframes fadeForm {
+    from { opacity:0; transform:translateY(8px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  .form-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .form-sub   { font-size: 13px; color: var(--text2); margin-bottom: 22px; line-height: 1.5; }
+
+  /* ── Fields ── */
+  .field { margin-bottom: 14px; }
+
+  .field label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600;
+    color: var(--text2); margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: 0.8px;
+  }
+
+  .input-wrap { position: relative; }
+
+  .input-icon {
+    position: absolute; left: 11px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--text3); pointer-events: none;
+    display: flex; transition: color 0.2s;
+  }
+  .input-icon svg { width: 14px; height: 14px; }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="password"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 10px 36px 10px 34px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .input-wrap:focus-within .input-icon { color: var(--accent); }
+  input::placeholder { color: var(--text3); font-size: 12px; }
+
+  .pwd-toggle {
+    position: absolute; right: 10px; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--text3); padding: 2px;
+    transition: color 0.2s; display: flex;
+  }
+  .pwd-toggle:hover { color: var(--text2); }
+  .pwd-toggle svg { width: 14px; height: 14px; }
+
+  /* ── Row ── */
+  .row {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    margin: 6px 0 18px;
+  }
+
+  .remember {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 13px; color: var(--text2);
+    cursor: pointer; user-select: none;
+  }
+  .remember input[type="checkbox"] { display: none; }
+
+  .chk {
+    width: 15px; height: 15px;
+    border: 1px solid var(--border2);
+    border-radius: 4px; background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .remember input:checked ~ .chk {
+    background: var(--accent); border-color: var(--accent);
+  }
+  .remember input:checked ~ .chk::after {
+    content: '';
+    width: 8px; height: 4px;
+    border-left: 2px solid #0d1117;
+    border-bottom: 2px solid #0d1117;
+    transform: rotate(-45deg) translateY(-1px);
+    display: block;
+  }
+
+  .link-btn {
+    font-size: 12px; color: var(--blue);
+    background: none; border: none;
+    cursor: pointer; font-family: 'Outfit', sans-serif;
+    transition: opacity 0.2s; padding: 0; font-weight: 500;
+  }
+  .link-btn:hover { opacity: 0.75; text-decoration: underline; }
+
+  /* ── Primary button ── */
+  .btn-primary {
+    width: 100%; padding: 11px 20px;
+    background: var(--accent-d);
+    color: #fff; border: 1px solid var(--accent);
+    border-radius: 6px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(63,185,80,0.2);
+    letter-spacing: 0.2px;
+  }
+  .btn-primary:hover {
+    background: var(--accent);
+    box-shadow: 0 4px 16px rgba(63,185,80,0.35);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active { transform: translateY(0); }
+
+  /* ── Divider ── */
+  .divider {
+    display: flex; align-items: center; gap: 10px;
+    margin: 16px 0; font-size: 11px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border2);
+  }
+
+  .bottom-link {
+    text-align: center; margin-top: 16px;
+    font-size: 13px; color: var(--text2);
+  }
+
+  /* ── Strength ── */
+  .strength-bar { display: flex; gap: 3px; margin-top: 7px; }
+  .strength-seg {
+    height: 2px; flex: 1;
+    background: var(--border2); border-radius: 2px;
+    transition: background 0.3s;
+  }
+  .strength-seg.weak   { background: var(--error); }
+  .strength-seg.medium { background: var(--orange); }
+  .strength-seg.strong { background: var(--accent); }
+  .strength-label { font-size: 11px; margin-top: 4px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Toast notification ── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 12px 16px;
+    display: flex; align-items: flex-start; gap: 10px;
+    min-width: 280px; max-width: 340px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+    z-index: 100;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast-icon { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+  .toast-content { flex: 1; }
+  .toast-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .toast-msg   { font-size: 12px; color: var(--text2); line-height: 1.4; }
+  .toast.success .toast-icon { color: var(--accent); }
+  .toast.error   .toast-icon { color: var(--error); }
+  .toast.success { border-left: 3px solid var(--accent); }
+  .toast.error   { border-left: 3px solid var(--error); }
+
+  /* ── Status bar — like the app footer ── */
+  .statusbar {
+    position: relative; z-index: 10;
+    margin-top: 0; width: 100%; max-width: 420px;
+    background: var(--bg3);
+    border: 1px solid var(--border2); border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 5px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text3);
+    animation: fadeUp 0.5s 0.12s ease both;
+  }
+
+  .status-left { display: flex; align-items: center; gap: 12px; }
+  .status-right { display: flex; align-items: center; gap: 6px; }
+
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent-glow);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .status-dot.waking {
+    background: var(--orange);
+    box-shadow: 0 0 6px rgba(240,136,62,0.4);
+    animation: pulse 0.8s ease-in-out infinite;
+  }
+  .status-dot.offline {
+    background: var(--error);
+    box-shadow: 0 0 6px rgba(248,81,73,0.3);
+    animation: none;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0.5; }
+  }
+
+  .status-users { color: var(--orange); }
+
+  /* ── Error msg inline ── */
+  .field-error {
+    font-size: 11px; color: var(--error);
+    margin-top: 5px; display: none;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Success card (forgot) ── */
+  .success-panel {
+    display: none; text-align: center;
+    padding: 12px 0 8px; animation: fadeForm 0.4s ease;
+  }
+  .success-icon-wrap {
+    width: 52px; height: 52px;
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 14px;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+  .success-icon-wrap svg { width: 22px; height: 22px; color: var(--accent); }
+  .success-panel h3 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .success-panel p  { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%,60%  { transform: translateX(-5px); }
+    40%,80%  { transform: translateX(5px); }
+  }
+
+  @media (max-width: 460px) {
+    .card-body { padding: 20px 20px 24px; }
+    .brand-title { font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="glow glow1"></div>
+<div class="glow glow2"></div>
+
+<!-- Brand -->
+<div class="brand">
+  <div class="brand-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="12" cy="5" rx="9" ry="3"/>
+      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+    </svg>
+  </div>
+  <div class="brand-title">QueryForge <span>DataZen</span></div>
+  <div class="brand-sub">// intelligent data workspace</div>
+</div>
+
+<!-- Card -->
+<div class="card" id="main-card">
+
+  <!-- Title bar like the app -->
+  <div class="card-titlebar">
+    <span class="titlebar-dot dot-red"></span>
+    <span class="titlebar-dot dot-amber"></span>
+    <span class="titlebar-dot dot-green"></span>
+    <span class="titlebar-name" id="titlebar-label">auth.session</span>
+  </div>
+
+  <div class="card-body">
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('login',this,'Sign In','auth.session')">Sign In</button>
+      <button class="tab-btn" onclick="switchTab('register',this,'Create Account','new.user')">Register</button>
+      <button class="tab-btn" onclick="switchTab('forgot',this,'Reset Password','pwd.reset')">Reset</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div class="form active" id="form-login">
+      <div class="form-title">Sign in</div>
+      <div class="form-sub">Access your QueryForge DataZen workspace.</div>
+
+      <div class="field">
+        <label>Username or Email</label>
+        <div class="input-wrap">
+          <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+          <input type="text" placeholder="username or email" id="login-user">
+        </div>
+        <div class="field-error" id="err-login-user">Username or email is required</div>
+      </div>
+
+      <div class="field">
+        <label>Password</label>
+        <div class="input-wrap">
+          <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+          <input type="password" placeholder="••••••••" id="login-pwd">
+          <button class="pwd-toggle" type="button" onclick="togglePwd('login-pwd',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="field-error" id="err-login-pwd">Password is required</div>
+        <div class="field-error" id="err-login-fail">Invalid username or password</div>
+      </div>
+
+      <div class="row">
+        <label class="remember">
+          <input type="checkbox" id="remember-me">
+          <span class="chk"></span>
+          Keep me signed in
+        </label>
+        <button class="link-btn" onclick="switchTab('forgot', document.querySelectorAll('.tab-btn')[2],'Reset Password','pwd.reset')">Forgot password?</button>
+      </div>
+
+      <button class="btn-primary" onclick="handleLogin()">→ Sign In</button>
+
+      <div class="bottom-link">
+        No account?
+        <button class="link-btn" onclick="switchTab('register', document.querySelectorAll('.tab-btn')[1],'Create Account','new.user')">Register here</button>
+      </div>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div class="form" id="form-register">
+      <div class="form-title">Create account</div>
+      <div class="form-sub">Register to start using QueryForge DataZen.</div>
+
+      <div class="field">
+        <label>Full Name</label>
+        <div class="input-wrap">
+          <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+          <input type="text" placeholder="your full name" id="reg-name">
+        </div>
+        <div class="field-error" id="err-reg-name">Full name is required</div>
+      </div>
+
+      <div class="field">
+        <label>Username</label>
+        <div class="input-wrap">
+          <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg></span>
+          <input type="text" placeholder="choose a username" id="reg-username">
+        </div>
+        <div class="field-error" id="err-reg-username">Username is required</div>
+        <div class="field-error" id="err-reg-username-taken">Username already taken</div>
+      </div>
+
+      <div class="field">
+        <label>Email Address</label>
+        <div class="input-wrap">
+          <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
+          <input type="email" placeholder="you@email.com" id="reg-email">
+        </div>
+        <div class="field-error" id="err-reg-email">Valid email is required</div>
+        <div class="field-error" id="err-reg-email-taken">Email already registered</div>
+      </div>
+
+      <div class="field">
+        <label>Password</label>
+        <div class="input-wrap">
+          <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+          <input type="password" placeholder="create password" id="reg-pwd" oninput="checkStrength(this.value)">
+          <button class="pwd-toggle" type="button" onclick="togglePwd('reg-pwd',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="strength-bar">
+          <div class="strength-seg" id="s1"></div>
+          <div class="strength-seg" id="s2"></div>
+          <div class="strength-seg" id="s3"></div>
+          <div class="strength-seg" id="s4"></div>
+        </div>
+        <div class="strength-label" id="strength-label">—</div>
+        <div class="field-error" id="err-reg-pwd">Password must be at least 6 characters</div>
+      </div>
+
+      <div class="field">
+        <label>Confirm Password</label>
+        <div class="input-wrap">
+          <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+          <input type="password" placeholder="confirm password" id="reg-confirm">
+          <button class="pwd-toggle" type="button" onclick="togglePwd('reg-confirm',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="field-error" id="err-reg-confirm">Passwords do not match</div>
+      </div>
+
+      <button class="btn-primary" style="margin-top:6px" onclick="handleRegister()">→ Create Account</button>
+
+      <div class="bottom-link">
+        Already registered?
+        <button class="link-btn" onclick="switchTab('login', document.querySelectorAll('.tab-btn')[0],'Sign In','auth.session')">Sign in</button>
+      </div>
+    </div>
+
+    <!-- FORGOT PASSWORD FORM -->
+    <div class="form" id="form-forgot">
+      <div class="form-title">Reset password</div>
+      <div class="form-sub">Enter your registered email to receive a reset link.</div>
+
+      <div id="forgot-fields">
+        <div class="field">
+          <label>Email Address</label>
+          <div class="input-wrap">
+            <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
+            <input type="email" placeholder="you@email.com" id="forgot-email">
+          </div>
+          <div class="field-error" id="err-forgot">Enter your registered email</div>
+        </div>
+        <button class="btn-primary" onclick="handleForgot()">→ Send Reset Link</button>
+      </div>
+
+      <div class="success-panel" id="forgot-success">
+        <div class="success-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3>Reset link sent</h3>
+        <p>Check your inbox. The link expires in 15 minutes.</p>
+      </div>
+
+      <div class="bottom-link" style="margin-top:16px">
+        <button class="link-btn" onclick="switchTab('login', document.querySelectorAll('.tab-btn')[0],'Sign In','auth.session')">← Back to sign in</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Status bar matching app footer -->
+<div class="statusbar">
+  <div class="status-left">
+    <span style="display:flex;align-items:center;gap:5px">
+      <span class="status-dot" id="server-dot"></span>
+      <span id="server-status-label">Connecting…</span>
+    </span>
+    <span class="status-users" id="user-count-label">⬡ — users registered</span>
+  </div>
+  <div class="status-right">
+    <span id="status-time">--:--:--</span>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" id="toast-icon-svg">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+  <div class="toast-content">
+    <div class="toast-title" id="toast-title"></div>
+    <div class="toast-msg" id="toast-msg"></div>
+  </div>
+</div>
+
+<script>
+  // ── Storage helpers ──────────────────────────────────────────
+  const USERS_KEY = 'qfdz_users';
+
+  function getUsers() {
+    try { return JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); }
+    catch { return []; }
+  }
+
+  function saveUser(user) {
+    const users = getUsers();
+    users.push(user);
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  }
+
+  function findUser(identifier) {
+    return getUsers().find(u =>
+      u.username.toLowerCase() === identifier.toLowerCase() ||
+      u.email.toLowerCase() === identifier.toLowerCase()
+    );
+  }
+
+  function updateUserCount() {
+    fetch(SERVER + '/user-count')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && typeof data.count === 'number') {
+          const count = data.count;
+          document.getElementById('user-count-label').textContent =
+            `⬡ ${count} user${count !== 1 ? 's' : ''} registered`;
+        }
+      })
+      .catch(() => {
+        document.getElementById('user-count-label').textContent = '⬡ — users registered';
+      });
+  }
+
+  // ── Tab switching ────────────────────────────────────────────
+  function switchTab(tab, btn, title, file) {
+    document.querySelectorAll('.form').forEach(f => f.classList.remove('active'));
+    document.getElementById('form-' + tab).classList.add('active');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    if (file) document.getElementById('titlebar-label').textContent = file;
+    // Reset forgot form
+    if (tab !== 'forgot') {
+      document.getElementById('forgot-fields').style.display = 'block';
+      document.getElementById('forgot-success').style.display = 'none';
+    }
+    clearAllErrors();
+  }
+
+  // ── Password toggle ──────────────────────────────────────────
+  function togglePwd(id, btn) {
+    const inp = document.getElementById(id);
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.innerHTML = show
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  }
+
+  // ── Password strength ─────────────────────────────────────────
+  function checkStrength(val) {
+    const segs = ['s1','s2','s3','s4'].map(id => document.getElementById(id));
+    const lbl  = document.getElementById('strength-label');
+    segs.forEach(s => s.className = 'strength-seg');
+    if (!val) { lbl.textContent = '—'; lbl.style.color = 'var(--text3)'; return; }
+    let score = 0;
+    if (val.length >= 6)  score++;
+    if (val.length >= 10) score++;
+    if (/[A-Z]/.test(val) && /[0-9]/.test(val)) score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
+    const cls  = score <= 1 ? 'weak' : score <= 2 ? 'medium' : 'strong';
+    const txts = { weak:'weak', medium:'medium', strong:'strong ✓' };
+    const clrs = { weak:'var(--error)', medium:'var(--orange)', strong:'var(--accent)' };
+    for (let i = 0; i < Math.min(score+1,4); i++) segs[i].classList.add(cls);
+    lbl.textContent = '// ' + txts[cls];
+    lbl.style.color = clrs[cls];
+  }
+
+  // ── Error helpers ─────────────────────────────────────────────
+  function showErr(id) { const el = document.getElementById(id); if(el) el.style.display = 'block'; }
+  function hideErr(id) { const el = document.getElementById(id); if(el) el.style.display = 'none'; }
+  function clearAllErrors() {
+    document.querySelectorAll('.field-error').forEach(e => e.style.display = 'none');
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────
+  let toastTimer;
+  function showToast(type, title, msg) {
+    const t   = document.getElementById('toast');
+    const ico = document.getElementById('toast-icon-svg');
+    document.getElementById('toast-title').textContent = title;
+    document.getElementById('toast-msg').textContent   = msg;
+    t.className = 'toast ' + type;
+    ico.innerHTML = type === 'success'
+      ? `<polyline points="20 6 9 17 4 12"/>`
+      : `<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>`;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  // ── Shake ────────────────────────────────────────────────────
+  function shake() {
+    const c = document.getElementById('main-card');
+    c.style.animation = 'none'; void c.offsetHeight;
+    c.style.animation = 'shake 0.4s ease';
+    setTimeout(() => c.style.animation = '', 400);
+  }
+
+  // ── LOGIN ────────────────────────────────────────────────────
+function handleLogin() {
+  clearAllErrors();
+
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pwd').value;
+
+  let valid = true;
+
+  if (!u) { showErr('err-login-user'); valid = false; }
+  if (!p) { showErr('err-login-pwd');  valid = false; }
+
+  if (!valid) { shake(); return; }
+
+  // Prevent double-submit
+  const btn = document.querySelector('#form-login .btn-primary');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Signing in…';
+
+  // 🔥 API CALL
+  fetch('https://queryforge-backend-jjxx.onrender.com/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      identifier: u,
+      password: btoa(p)
+    })
+  })
+  .then(res => {
+    return res.json().then(data => ({ status: res.status, data }));
+  })
+  .then(({ status, data }) => {
+
+    if (data.message !== 'Login success' || status < 200 || status >= 300) {
+      showErr('err-login-fail');
+      shake();
+      btn.disabled = false;
+      btn.textContent = '→ Sign In';
+      return;
+    }
+
+    const user = data.user;
+
+    // Save session
+    const remember = document.getElementById('remember-me').checked;
+
+    const sessionData = {
+      username: user.username,
+      name: user.name,
+      email: user.email,
+      loginTime: new Date().toISOString()
+    };
+
+    if (remember) {
+      localStorage.setItem('qfdz_session', JSON.stringify(sessionData));
+    } else {
+      sessionStorage.setItem('qfdz_session', JSON.stringify(sessionData));
+    }
+
+    showToast('success', 'Welcome back, ' + user.name.split(' ')[0] + '!', 'Redirecting to your workspace...');
+
+    setTimeout(() => {
+      window.location.href = 'https://queryforge-datazen.vercel.app/'; // 🔥 main app
+    }, 1000);
+
+  })
+  .catch(err => {
+    console.error('Login error:', err);
+    showToast('error', 'Network error', 'Could not reach server. Check your connection and try again.');
+    shake();
+    btn.disabled = false;
+    btn.textContent = '→ Sign In';
+  });
+}
+
+ function handleRegister() {
+  clearAllErrors();
+
+  const name     = document.getElementById('reg-name').value.trim();
+  const username = document.getElementById('reg-username').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const pwd      = document.getElementById('reg-pwd').value;
+  const confirm  = document.getElementById('reg-confirm').value;
+
+  let valid = true;
+
+  if (!name)    { showErr('err-reg-name'); valid = false; }
+  if (!username){ showErr('err-reg-username'); valid = false; }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showErr('err-reg-email'); valid = false; }
+  if (!pwd || pwd.length < 6) { showErr('err-reg-pwd'); valid = false; }
+  if (pwd !== confirm) { showErr('err-reg-confirm'); valid = false; }
+
+  if (!valid) { shake(); return; }
+
+  // Prevent double-submit
+  const btn = document.querySelector('#form-register .btn-primary');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Creating account…';
+
+  // 🔥 API CALL
+  fetch('https://queryforge-backend-jjxx.onrender.com/register', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name,
+      username,
+      email,
+      password: btoa(pwd)
+    })
+  })
+  .then(res => {
+    // Capture HTTP status alongside JSON
+    return res.json().then(data => ({ status: res.status, data }));
+  })
+  .then(({ status, data }) => {
+
+    // Handle known conflict errors
+    if (status === 409 || data.message === 'User exists' || data.message === 'Username taken') {
+      showErr('err-reg-username-taken');
+      shake();
+      return;
+    }
+
+    if (data.message === 'Email exists' || data.message === 'Email already registered') {
+      showErr('err-reg-email-taken');
+      shake();
+      return;
+    }
+
+    // Any non-success status that isn't a known conflict
+    if (status < 200 || status >= 300) {
+      const msg = data.message || data.error || 'Registration failed. Please try again.';
+      showToast('error', 'Registration failed', msg);
+      shake();
+      return;
+    }
+
+    // ✅ Success
+    showToast('success', 'Account created!', 'Welcome to QueryForge DataZen, ' + name.split(' ')[0] + '!');
+
+    // Clear form
+    ['reg-name','reg-username','reg-email','reg-pwd','reg-confirm'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    checkStrength('');
+
+    // Switch to login
+    updateUserCount();
+    setTimeout(() => {
+      switchTab('login', document.querySelectorAll('.tab-btn')[0], 'Sign In', 'auth.session');
+    }, 1500);
+
+  })
+  .catch(err => {
+    console.error('Register error:', err);
+    showToast('error', 'Network error', 'Could not reach server. Check your connection and try again.');
+    shake();
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.textContent = '→ Create Account';
+  });
+}
+
+  // ── FORGOT PASSWORD ───────────────────────────────────────────
+function handleForgot() {
+  clearAllErrors();
+
+  const email = document.getElementById('forgot-email').value.trim();
+  if (!email) { showErr('err-forgot'); shake(); return; }
+
+  // Just show success (no backend yet)
+  document.getElementById('forgot-fields').style.display = 'none';
+  document.getElementById('forgot-success').style.display = 'block';
+
+  showToast('success', 'Reset link sent', 'Check inbox for ' + email);
+}
+
+  // ── Clock ─────────────────────────────────────────────────────
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('status-time').textContent =
+      now.toTimeString().slice(0,8);
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // ── Server wake-up & status ───────────────────────────────────
+  const SERVER = 'https://queryforge-backend-jjxx.onrender.com';
+  const dot    = document.getElementById('server-dot');
+  const slabel = document.getElementById('server-status-label');
+
+  function setServerStatus(state) {
+    dot.className = 'status-dot' + (state === 'waking' ? ' waking' : state === 'offline' ? ' offline' : '');
+    if (state === 'online') {
+      slabel.textContent = 'Server Active';
+    } else if (state === 'waking') {
+      slabel.textContent = 'Waking server…';
+    } else {
+      slabel.innerHTML = 'Server Offline &nbsp;<button onclick="wakeServer()" style="font-family:JetBrains Mono,monospace;font-size:10px;background:var(--bg3);border:1px solid var(--border2);color:var(--orange);padding:1px 7px;border-radius:4px;cursor:pointer;">↺ Retry</button>';
+    }
+  }
+
+  // Disable submit buttons until server is confirmed reachable
+  function setFormsReady(ready) {
+    document.querySelectorAll('.btn-primary').forEach(b => {
+      b.disabled = !ready;
+      if (!ready) b.style.opacity = '0.55';
+      else        b.style.opacity = '';
+    });
+  }
+
+  // Endpoints to probe — any 200/4xx means server is awake (even 404/409 = alive)
+  const WAKE_ENDPOINTS = [
+    { url: SERVER + '/ping',       method: 'GET'  },
+    { url: SERVER + '/user-count', method: 'GET'  },
+    { url: SERVER + '/login',      method: 'POST' }, // 400/422 = server is alive
+  ];
+
+  async function probeServer() {
+    for (const ep of WAKE_ENDPOINTS) {
+      try {
+        const res = await fetch(ep.url, {
+          method: ep.method,
+          headers: ep.method === 'POST' ? { 'Content-Type': 'application/json' } : {},
+          body: ep.method === 'POST' ? JSON.stringify({}) : undefined,
+          signal: AbortSignal.timeout(6000)
+        });
+        // Any HTTP response (even 400/404/422) means the server is UP
+        if (res.status > 0) return true;
+      } catch (_) { /* network error — server still asleep */ }
+    }
+    return false;
+  }
+
+  async function wakeServer() {
+    setServerStatus('waking');
+    setFormsReady(false);
+
+    const MAX_ATTEMPTS = 10;
+    const DELAY_MS     = 3000; // 3s between retries — Render cold start is ~15-25s
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      // Show countdown in label
+      slabel.textContent = `Waking server… (${attempt}/${MAX_ATTEMPTS})`;
+
+      const alive = await probeServer();
+      if (alive) {
+        setServerStatus('online');
+        setFormsReady(true);
+        updateUserCount();
+        return;
+      }
+
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise(r => setTimeout(r, DELAY_MS));
+      }
+    }
+
+    // All retries exhausted — unlock forms but warn user
+    setServerStatus('offline');
+    setFormsReady(true);
+    // Don't show an alarming toast — just let the status bar show it
+  }
+
+  wakeServer();
+
+  // ── Init ─────────────────────────────────────────────────────
+  // Auto-fill from session if exists
+  const session = JSON.parse(localStorage.getItem('qfdz_session') || 'null');
+  if (session) {
+    document.getElementById('login-user').value = session.username || '';
+  }
+</script>
+</body>
+</html>
