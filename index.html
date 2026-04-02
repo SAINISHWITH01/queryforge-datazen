@@ -936,6 +936,12 @@ var fpCol=null, fpAllValues=[], fpPending=new Set();
 
 /* ══════════ INIT ══════════ */
 window.onload=function(){
+  // Restore user session if available
+  var storedUser=sessionStorage.getItem('user_id');
+  if(!storedUser){
+    // Also try reading full user object saved by login3.html
+    try{var u=JSON.parse(sessionStorage.getItem('user')||'null');if(u&&u.id)sessionStorage.setItem('user_id',u.id);}catch(e){}
+  }
   loadConns();
   addTab();
   renderTabs();
@@ -1001,7 +1007,28 @@ function renderTabs(){
 }
 
 /* ══════════ CONNECTIONS ══════════ */
-function loadConns(){try{connections=JSON.parse(localStorage.getItem('csWebConns')||'[]');}catch(e){connections=[];}renderConnSel();}
+function getCurrentUserId(){return sessionStorage.getItem('user_id');}
+
+async function loadConns(){
+  var uid=getCurrentUserId();
+  if(!uid){
+    // fallback to localStorage for unauthenticated use
+    try{connections=JSON.parse(localStorage.getItem('csWebConns')||'[]');}catch(e){connections=[];}
+    renderConnSel();renderSavedConns();return;
+  }
+  try{
+    var r=await fetch(PROXY_URL+'/connections?user_id='+encodeURIComponent(uid));
+    var d=await r.json();
+    connections=(d.connections||[]).map(function(c){
+      return {id:c.id,name:c.name,type:c.type,url:c.host,user:c.username,pass:c.password,host:c.host,port:c.port,database_name:c.database_name,reportPath:'/Custom/CloudSQL/CloudSQLReport_csv.xdo'};
+    });
+  }catch(e){
+    console.warn('Could not fetch connections from server, using localStorage fallback',e);
+    try{connections=JSON.parse(localStorage.getItem('csWebConns')||'[]');}catch(e2){connections=[];}
+  }
+  renderConnSel();renderSavedConns();
+}
+
 function saveConns(){try{localStorage.setItem('csWebConns',JSON.stringify(connections));}catch(e){}}
 function renderConnSel(){
   var sel=document.getElementById('csel'),cur=sel.value;
@@ -1027,8 +1054,15 @@ function renderSavedConns(){
     +connections.map(function(c,i){return '<tr><td style="padding:5px 8px;border-bottom:1px solid #eef2f8;">'+esc(c.name)+'</td><td style="padding:5px 8px;border-bottom:1px solid #eef2f8;color:#555;">'+esc(c.url)+'</td><td style="padding:5px 8px;border-bottom:1px solid #eef2f8;"><button onclick="loadConn('+i+')" style="font-size:11px;padding:2px 8px;border:1px solid #1565c0;background:#fff;color:#1565c0;border-radius:3px;cursor:pointer;margin-right:4px;">Load</button><button onclick="deleteConn('+i+')" style="font-size:11px;padding:2px 8px;border:1px solid #b71c1c;background:#fff;color:#b71c1c;border-radius:3px;cursor:pointer;">Delete</button></td></tr>';}).join('')+'</tbody></table>';
 }
 function loadConn(i){document.getElementById('csel').value=i;selectConn();closeConnModal();}
-function deleteConn(i){
+async function deleteConn(i){
   if(!confirm('Delete "'+connections[i].name+'"?'))return;
+  var conn=connections[i];
+  var uid=getCurrentUserId();
+  if(uid&&conn.id){
+    try{
+      await fetch(PROXY_URL+'/connections/'+conn.id,{method:'DELETE'});
+    }catch(e){console.warn('Server delete failed',e);}
+  }
   connections.splice(i,1);saveConns();renderConnSel();renderSavedConns();
   if(activeConn&&!connections.includes(activeConn)){activeConn=null;setStatus('','Not connected');document.getElementById('title-conn').textContent='No connection selected';}
 }
@@ -1041,18 +1075,38 @@ function testConn(){
   setMStatus('info','Checking URL format…');
   setTimeout(function(){try{new URL(url);setMStatus('ok','✓ URL valid.');}catch(e){setMStatus('err','Invalid URL: '+e.message);}},600);
 }
-function saveConn(){
+async function saveConn(){
   var name=document.getElementById('mc-name').value.trim();
   var url=document.getElementById('mc-url').value.trim().replace(/\/$/,'');
   var user=document.getElementById('mc-user').value.trim();
   var pass=document.getElementById('mc-pass').value;
-  //var path=document.getElementById('mc-path').value.trim()||'/Custom/CloudSQL/CloudSQLReport_csv.xdo';
   var path = '/Custom/CloudSQL/CloudSQLReport_csv.xdo';
   if(!name){setMStatus('err','Enter a connection name');return;}
   if(!url){setMStatus('err','Enter the Oracle URL');return;}
   if(!user){setMStatus('err','Enter username');return;}
-  connections.push({name,url,user,pass,reportPath:path});
-  saveConns();renderConnSel();
+
+  var uid=getCurrentUserId();
+  if(uid){
+    try{
+      var r=await fetch(PROXY_URL+'/connections',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user_id:parseInt(uid),name:name,type:'oracle',host:url,username:user,password:pass})
+      });
+      var d=await r.json();
+      if(!r.ok){setMStatus('err',d.message||'Failed to save');return;}
+      var saved=d.connection;
+      connections.push({id:saved.id,name:name,url:url,user:user,pass:pass,reportPath:path});
+    }catch(e){
+      console.warn('Server save failed, saving locally',e);
+      connections.push({name,url,user,pass,reportPath:path});
+      saveConns();
+    }
+  }else{
+    connections.push({name,url,user,pass,reportPath:path});
+    saveConns();
+  }
+  renderConnSel();
   document.getElementById('csel').value=connections.length-1;
   selectConn();closeConnModal();checkBanner();
 }
