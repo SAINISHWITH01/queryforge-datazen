@@ -1,311 +1,2238 @@
-const http  = require('http');
-const https = require('https');
-const url   = require('url');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CloudSQL Desktop — Web Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Segoe+UI:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
 
-const { Pool } = require('pg');
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-const PORT = process.env.PORT || 3737;
-
-// ── ANSI colors for nice terminal output ──
-const C = { reset:'\x1b[0m', green:'\x1b[32m', yellow:'\x1b[33m', red:'\x1b[31m', cyan:'\x1b[36m', gray:'\x1b[90m', bold:'\x1b[1m' };
-
-function log(level, msg) {
-  var ts  = new Date().toTimeString().slice(0,8);
-  var col = level==='OK'?C.green : level==='ERR'?C.red : level==='REQ'?C.cyan : C.yellow;
-  console.log(C.gray+'['+ts+'] '+C.reset+col+'['+level+']'+C.reset+' '+msg);
+body{
+  font-family:'Segoe UI',system-ui,sans-serif;
+  background:#0f172a;
+  color:#e5e7eb;
+  height:100vh;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  font-size:13px;
 }
 
-// ── Parse body helper ──
-function getBody(req, callback) {
-  let body = '';
-  req.on('data', chunk => { body += chunk.toString(); });
-  req.on('end', () => {
-    if (!body) return callback({});
-    try {
-      callback(JSON.parse(body));
-    } catch (e) {
-      console.error("JSON parse error:", e);
-      callback({});
+/* ── TITLE BAR ── */
+.titlebar{
+  background:#111827;
+  border-bottom:1px solid #1f2937;
+  color:#e5e7eb;
+  height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  flex-shrink:0;
+}
+.titlebar-logo{
+  font-size:20px;        /* bigger */
+  font-weight:700;       /* bold */
+  color:#ffffff;         /* bright white */
+  letter-spacing:0.8px;  /* slight spacing (premium look) */
+}
+.titlebar-logo span{font-size:18px;}
+.titlebar-center{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  font-size:12px;
+  opacity:.85;
+  color:#9ca3af;
+}
+.titlebar-user{
+  position:absolute;
+  right:14px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:12px;
+  color:#d1d5db;
+}
+.titlebar-user span{
+  font-weight:500;
+  color:#e5e7eb;
+}
+.btn-logout{
+  font-size:11px;
+  padding:4px 12px;
+  background:transparent;
+  color:#9ca3af;
+  border:1px solid #374151;
+  border-radius:5px;
+  cursor:pointer;
+  transition:all .2s;
+}
+.btn-logout:hover{background:#1f2937;color:#f87171;border-color:#f87171;}
+#title-conn {
+  display:none;
+}
+/* ── LAYOUT ── */
+.body-wrap{display:flex;flex:1;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  background:#111827;
+  border-right:1px solid #1f2937;
+  width:44px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:6px 0;
+  gap:2px;
+  flex-shrink:0;
+}
+.sico{
+  width:34px;height:34px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:#9ca3af;font-size:17px;transition:all .15s;
+}
+.sico:hover,.sico.on{background:#1f2937;color:#e5e7eb;}
+.sico.mt{margin-top:auto;}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#0f172a;}
+
+/* ── TABS ── */
+.tabbar{
+  /*background:#0f172a;
+  border-bottom:1px solid #1f2937;*/
+  background:#d1d5db;   /* slightly darker than current */
+  border-bottom:1px solid #1e293b;
+  height:34px;
+  display:flex;
+  align-items:flex-end;
+  padding:0 6px;
+  gap:1px;
+  overflow-x:auto;
+  flex-shrink:0;
+}
+.tabbar::-webkit-scrollbar{height:2px;}
+.tab{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  padding:0 10px;
+  height:28px;
+  border-radius:5px 5px 0 0;
+  cursor:pointer;
+  white-space:nowrap;
+  font-size:12px;
+  /*color:#9ca3af;*/
+  color:#94a3b8;              /*  soft gray */
+  background:transparent;
+  border:1px solid transparent;
+  border-bottom:none;
+  user-select:none;
+  transition:all .12s;
+}
+.tab.active {
+  background:#ffffff;         /* 🔥 white tab */
+  color:#000000;              /* black text */
+  border:1px solid #e5e7eb;
+  border-bottom:none;
+  font-weight:600;
+}
+.tab:not(.active):hover {
+  background:#1e293b;         /* hover highlight */
+  color:#e5e7eb;
+}
+.tab-x{font-size:10px;
+	color:#9ca3af;
+	padding:1px 3px;
+	border-radius:3px;
+	line-height:1;
+	}
+.tab-x:hover {
+  background:#ef4444;
+  color:#ffffff;
+}
+.tab-add{
+  width:26px;height:26px;display:flex;align-items:center;
+  justify-content:center;border-radius:4px;cursor:pointer;
+  color:#9ca3af;font-size:18px;align-self:center;margin-bottom:2px;
+}
+.tab-add:hover{background:#1f2937;color:#e5e7eb;}
+
+/* ── TOOLBAR ── */
+.toolbar{
+  /* ── background:#111827;
+  border-bottom:1px solid #1f2937; ── */
+  background:#ffffff;              /* white background */
+  border-bottom:1px solid #e5e7eb;
+  height:36px;display:flex;align-items:center;
+  padding:0 8px;gap:4px;flex-shrink:0;
+}
+.flabel {
+  font-size:12px;
+  color:#374151;
+  font-weight:600;   /* 🔥 makes it thick */
+}
+.finput{
+  width:60px;padding:3px 6px;
+ /* border:1px solid #1f2937; */
+  border-radius:3px;
+  font-size:12px;
+ /* background:#0f172a;
+  color:#e5e7eb; */
+  background:#ffffff;
+  color:#000000;
+  border:1px solid #d1d5db;
+  outline:none;
+}
+.finput:focus{border-color:#e5e7eb;}
+.sep{width:1px;height:20px;background:#1f2937;margin:0 3px;}
+.tbtn{
+  width:27px;height:27px;border-radius:3px;
+  border:1px solid transparent;background:transparent;
+  cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-size:13px;
+  /* color:#9ca3af; */
+  color:#374151;   /* dark text */
+  transition:all .1s;position:relative;
+}
+.tbtn:hover{
+	/* background:#1f2937;
+	color:#e5e7eb; */
+	background:#f3f4f6;
+	color:#000;
+}
+.tbtn:active{transform:scale(.96);}
+.tbtn.run{color:#22c55e;font-size:15px;}
+.tbtn.stop{color:#ef4444;}
+.tbtn.run:hover{background:rgba(34,197,94,0.15);}
+.tbtn.stop:hover{background:rgba(239,68,68,0.15);}
+.tbtn[title]:hover::after{
+  content:attr(title);position:absolute;top:110%;left:50%;
+  transform:translateX(-50%);background:#020617;color:#e5e7eb;
+  font-size:10px;padding:2px 6px;border-radius:3px;
+  white-space:nowrap;z-index:99;pointer-events:none;
+}
+.conn-area{margin-left:auto;display:flex;align-items:center;gap:6px;}
+.csel{
+  min-width:190px;
+  /*padding:4px 28px 4px 10px;*/
+  /*border:1px solid #374151;*/
+  border-radius:4px;
+  /*background:#0f172a;*/
+  font-size:12px;
+  /*color:#e5e7eb;*/
+  outline:none;cursor:pointer;
+  background:#ffffff;
+  color:#000000;
+ /* border:1px solid #d1d5db; */
+   border:1.5px solid #9ca3af;   /* thicker border */
+  font-weight:600;              /* bold text */
+  padding:5px 30px 5px 10px;    /* slightly bigger */
+}
+.csel:focus{border-color:#e5e7eb;}
+.cadd{
+  /*padding:4px 10px;
+  border:1px solid #e5e7eb;*/
+  /*background:transparent;
+  color:#e5e7eb;*/
+  color:#000000;
+  border:1px solid #d1d5db;
+  border-radius:4px;font-size:11px;cursor:pointer;
+  /*font-weight:500;*/
+  white-space:nowrap;
+  border:1.5px solid #9ca3af;  /* thicker border */
+  font-weight:600;             /* bold text */
+  padding:5px 12px;            /* slightly bigger */
+}
+.cadd:hover{
+	/*background:rgba(229,231,235,0.1);*/
+	background:#f3f4f6;
+    border-color:#6b7280;
+	}
+.spin{
+  width:13px;height:13px;border:2px solid #1f2937;
+  border-top-color:#22c55e;border-radius:50%;
+  animation:sp .65s linear infinite;display:none;margin-left:4px;
+}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+/* ── PANE CONTAINER ── */
+/* FIX 1: Editor was tiny — increase default height and min-height */
+.pane-container{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+.editor-section{
+  display:flex;flex-direction:column;overflow:hidden;
+  min-height:120px;
+  height:280px;   /* bigger default */
+  flex-shrink:0;
+}
+
+/* ── EDITOR BODY ── */
+.ebody{
+  position:relative;flex:1;overflow:hidden;display:flex;
+  background:#ffffff;
+}
+.lnums{
+  width:44px;flex-shrink:0;
+  padding:10px 6px 10px 0;
+  font-family:'Fira Code',monospace;font-size:13px;line-height:1.7;
+  color:#9ca3af;background:#f9fafb;
+  border-right:1px solid #e5e7eb;
+  overflow:hidden;text-align:right;white-space:pre;user-select:none;
+}
+#hl{
+  position:absolute;top:0;left:44px;right:0;bottom:0;
+  padding:10px 14px;
+  font-family:'Fira Code',monospace;font-size:13px;line-height:1.7;
+  white-space:pre-wrap;word-break:break-word;
+  pointer-events:none;overflow:hidden;z-index:1;
+  color:#000;background:#ffffff;
+}
+#sqled{
+  position:absolute;top:0;left:44px;right:0;bottom:0;
+  z-index:2;padding:10px 14px;
+  background:transparent;border:none;outline:none;
+  resize:none;overflow:auto;
+  font-family:'Fira Code',monospace;font-size:13px;line-height:1.7;
+  color:transparent;caret-color:#000;
+  -webkit-text-fill-color:transparent;
+}
+#sqled::selection{background:rgba(34,197,94,0.25);-webkit-text-fill-color:transparent;}
+
+/* ── RESIZER ── */
+.resizer{
+  height:6px;background:#020617;
+  border-top:1px solid #1f2937;border-bottom:1px solid #1f2937;
+  cursor:row-resize;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;user-select:none;
+}
+.resizer::after{content:'';width:32px;height:2px;background:#374151;border-radius:1px;}
+
+/* ── RESULTS ── */
+.results-section{display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:120px;}
+/* Removed rtabs — Data tab section gone */
+.res-bar{
+  background:#020617;border-bottom:1px solid #1f2937;
+  height:26px;display:flex;align-items:center;
+  padding:0 10px;gap:8px;flex-shrink:0;font-size:11px;color:#9ca3af;
+}
+#res-info {
+  color:#ffffff;     /* white */
+  font-weight:600;   /* bold */
+  font-size:13px;
+}
+.res-bar-right{margin-left:auto;display:flex;align-items:center;gap:4px;}
+.tbl-wrap{flex:1;overflow:auto;}
+.tbl-wrap::-webkit-scrollbar{width:6px;height:6px;}
+.tbl-wrap::-webkit-scrollbar-thumb{background:#374151;border-radius:3px;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+
+/* ── TABLE HEADER ──
+   FIX 2: Column names bright white + bold, filter icon right-aligned, no overlap */
+thead th{
+  position:sticky;top:0;z-index:5;
+  background:#1e293b;
+  padding:0;                       /* padding handled inside .th-inner */
+  text-align:left;
+  font-weight:700;
+  font-size:11px;
+  color:#f1f5f9;                   /* bright white */
+  border-right:1px solid #334155;
+  border-bottom:1px solid #334155;
+  white-space:nowrap;
+}
+.th-inner{
+  display:flex;
+  align-items:center;
+  gap:0;
+  padding:5px 4px 5px 10px;
+}
+.th-label{
+  cursor:pointer;
+  flex:1;                          /* takes all space, pushes icon to right */
+  padding:1px 0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#f1f5f9;                   /* bright white */
+  font-weight:700;
+}
+.th-label:hover{color:#ffffff;}
+
+/* FIX 3: Filter button always right-aligned, never overlaps text */
+.th-filter-btn{
+  flex-shrink:0;                   /* never shrinks */
+  width:20px;height:20px;
+  display:flex;align-items:center;justify-content:center;
+  border:none;background:transparent;cursor:pointer;
+  border-radius:3px;
+  color:#6b7280;
+  transition:background .1s,color .1s;
+  padding:0;margin-left:2px;
+}
+.th-filter-btn:hover{background:#334155;color:#e5e7eb;}
+.th-filter-btn.active{color:#020617;background:#e5e7eb;border-radius:3px;}
+
+/* ── TABLE BODY — all black, thicker text, no blue ── */
+tbody td{
+  padding:5px 10px;
+  border-bottom:1px solid #1f2937;
+  border-right:1px solid #1f2937;
+  color:#000000;
+  background:#ffffff;
+  white-space:nowrap;
+  max-width:280px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-weight:500;        /* thicker */
+}
+tbody tr:nth-child(even) td{background:#ffffff;}
+tbody tr:nth-child(odd)  td{background:#ffffff;}
+tbody tr:hover td{background:#f1f5f9;}
+
+/* null cells slightly grey but still readable */
+.null-cell{color:#6b7280 !important;font-style:italic;font-weight:400 !important;}
+
+.nodata{
+  padding:14px 10px;
+  color:#ffffff;      /* white */
+  font-size:13px;
+  font-weight:600;    /* bold */
+}
+.errdata{padding:14px 10px;color:#ef4444;font-size:12px;white-space:pre-wrap;font-family:'Fira Code',monospace;}
+
+/* ── EXCEL-STYLE FILTER POPUP ── */
+.filter-popup{
+  position:fixed;
+  background:#111827;
+  border:1px solid #374151;
+  border-radius:8px;
+  box-shadow:0 8px 28px rgba(0,0,0,.7);
+  z-index:3000;width:280px;
+  display:none;flex-direction:column;overflow:hidden;font-size:13px;
+}
+.filter-popup.show{display:flex;}
+
+.fp-sort{padding:6px 0 2px;}
+.fp-sort-item{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 14px;cursor:pointer;
+  color:#e5e7eb;font-size:13px;
+}
+.fp-sort-item:hover{background:#1f2937;}
+.fp-sort-item.active-sort{
+  background:#1f2937;
+  color:#ffffff;
+  font-weight:600;
+}
+
+/* FIX 6: Sort/clear icons white not green */
+.fp-sort-icon{
+  font-size:16px;color:#e5e7eb;
+  width:22px;text-align:center;flex-shrink:0;line-height:1;
+}
+.fp-clear-icon{
+  font-size:13px;width:22px;text-align:center;
+  flex-shrink:0;color:#9ca3af;
+}
+
+.fp-divider{height:1px;background:#1f2937;margin:3px 0;}
+
+.fp-clear{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 14px;cursor:pointer;
+  color:#9ca3af;font-size:13px;
+}
+.fp-clear:hover{background:#7f1d1d;color:#fecaca;}
+
+.fp-search-wrap{padding:8px 10px 4px;}
+.fp-search{
+  width:100%;padding:6px 10px 6px 30px;
+  border:1px solid #374151;border-radius:4px;
+  font-size:12px;outline:none;
+  background:#020617 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 8px center;
+  color:#e5e7eb;
+}
+.fp-search:focus{border-color:#e5e7eb;}
+
+.fp-list{max-height:210px;overflow-y:auto;border-top:1px solid #1f2937;}
+.fp-list::-webkit-scrollbar{width:5px;}
+.fp-list::-webkit-scrollbar-thumb{background:#374151;border-radius:3px;}
+
+.fp-list-item{
+  display:flex;align-items:center;gap:10px;
+  padding:6px 14px;cursor:pointer;user-select:none;
+}
+.fp-list-item:hover{background:#1f2937;}
+.fp-list-item input[type=checkbox]{
+  width:15px;height:15px;cursor:pointer;
+  accent-color:#e5e7eb;flex-shrink:0;pointer-events:none;
+}
+.fp-list-item label{
+  cursor:pointer;font-size:12px;flex:1;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  pointer-events:none;color:#e5e7eb;
+}
+
+.fp-footer{
+  display:flex;gap:8px;padding:10px 12px;
+  border-top:1px solid #1f2937;background:#020617;
+}
+.fp-btn{
+  flex:1;padding:7px;border-radius:5px;
+  border:1px solid #374151;font-size:12px;
+  font-weight:600;cursor:pointer;font-family:inherit;
+}
+
+/* FIX 7: OK button white border and white text not green */
+.fp-btn.ok{background:#e5e7eb;color:#020617;border-color:#e5e7eb;}
+.fp-btn.ok:hover{background:#f1f5f9;}
+.fp-btn.cancel{background:#111827;color:#9ca3af;}
+.fp-btn.cancel:hover{background:#1f2937;color:#e5e7eb;}
+
+/* ── STATUS BAR ── */
+.statusbar{
+  background:#020617;color:#9ca3af;height:22px;
+  display:flex;align-items:center;padding:0 10px;
+  gap:16px;font-size:11px;flex-shrink:0;
+  border-top:1px solid #1f2937;
+}
+.sdot{width:6px;height:6px;border-radius:50%;background:#6b7280;}
+.sdot.ok{background:#22c55e;}
+.sdot.err{background:#ef4444;}
+.sdot.busy{background:#f59e0b;animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* ── MODALS ── */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);
+  z-index:200;display:none;align-items:center;justify-content:center;
+}
+.overlay.show{display:flex;}
+.modal{background:#111827;border-radius:8px;width:460px;box-shadow:0 10px 40px rgba(0,0,0,.8);}
+.mhead{
+  background:#020617;color:#e5e7eb;padding:12px 16px;
+  border-radius:8px 8px 0 0;display:flex;align-items:center;
+  justify-content:space-between;border-bottom:1px solid #1f2937;
+}
+.mhead-title{font-weight:600;font-size:14px;}
+.mclose{background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;}
+.mclose:hover{color:#ef4444;}
+.mbody{padding:16px;}
+.mf{margin-bottom:11px;}
+.mf label{
+  font-size:11px;color:#9ca3af;display:block;
+  margin-bottom:4px;font-weight:500;text-transform:uppercase;
+}
+.mf input,.mf select,.mf textarea{
+  width:100%;padding:7px 10px;border:1px solid #1f2937;
+  border-radius:4px;font-size:13px;outline:none;
+  background:#020617;color:#e5e7eb;
+}
+.mf input:focus,.mf select:focus,.mf textarea:focus{border-color:#e5e7eb;}
+.mstatus{font-size:12px;margin-top:6px;padding:6px 10px;border-radius:4px;display:none;}
+.mstatus.ok{background:#022c22;color:#4ade80;display:block;}
+.mstatus.err{background:#450a0a;color:#f87171;display:block;}
+.mstatus.info{background:#020617;color:#60a5fa;display:block;}
+.mfoot{padding:10px 16px;border-top:1px solid #1f2937;display:flex;justify-content:flex-end;gap:8px;}
+.mbtn{
+  padding:7px 18px;border-radius:4px;border:1px solid #374151;
+  background:#111827;font-size:13px;cursor:pointer;color:#e5e7eb;
+}
+.mbtn:hover:not(.primary){background:#1f2937;}
+.mbtn.primary{background:#e5e7eb;color:#020617;border-color:#e5e7eb;}
+.mbtn.primary:hover{background:#f1f5f9;}
+
+/* ── MODAL TABS ── */
+.tabs-row{display:flex;border-bottom:1px solid #1f2937;margin-bottom:12px;}
+.mtab{padding:6px 14px;font-size:12px;cursor:pointer;color:#9ca3af;border-bottom:2px solid transparent;}
+.mtab.on{color:#e5e7eb;border-bottom-color:#e5e7eb;font-weight:500;}
+.mtab-panel{display:none;}
+.mtab-panel.on{display:block;}
+.info-chip{background:#020617;color:#e5e7eb;border-radius:4px;padding:6px 10px;font-size:11px;margin-top:6px;border:1px solid #374151;}
+
+/* ── SQL SYNTAX COLORS (on white bg) ── */
+.kw{color:#1d4ed8;font-weight:600;}
+.fn{color:#000;}
+.str{color:#000;}
+.num{color:#000;}
+.cm{color:#6b7280;font-style:italic;}
+
+/* ── SETUP BANNER ── */
+.setup-banner{
+  background:#451a03;border:1px solid #f59e0b;
+  border-radius:6px;padding:10px 14px;margin:8px;
+  font-size:12px;color:#fbbf24;display:none;align-items:center;gap:8px;
+}
+.setup-banner.show{display:flex;}
+
+/* ── BIND VARIABLES MODAL ── */
+.bv-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.65);
+  z-index:500;display:none;align-items:center;justify-content:center;
+}
+.bv-overlay.show{display:flex;}
+.bv-modal{
+  background:#111827;border-radius:10px;
+  width:440px;max-height:80vh;
+  box-shadow:0 16px 50px rgba(0,0,0,.9);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.bv-head{
+  padding:14px 18px;border-bottom:1px solid #1f2937;
+  font-size:15px;font-weight:600;color:#e5e7eb;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.bv-head span{color:#60a5fa;font-size:13px;font-weight:400;margin-left:8px;}
+.bv-body{
+  padding:16px 18px;overflow-y:auto;flex:1;
+}
+.bv-body::-webkit-scrollbar{width:5px;}
+.bv-body::-webkit-scrollbar-thumb{background:#374151;border-radius:3px;}
+/* floating-label field */
+.bv-field{
+  position:relative;border:1.5px solid #374151;border-radius:7px;
+  margin-bottom:14px;transition:border-color .15s;
+  background:#0f172a;
+}
+.bv-field:focus-within{border-color:#60a5fa;}
+.bv-field label{
+  position:absolute;top:-9px;left:11px;
+  font-size:10px;font-weight:600;color:#60a5fa;
+  background:#111827;padding:0 5px;
+  text-transform:uppercase;letter-spacing:.06em;pointer-events:none;
+}
+.bv-field input{
+  width:100%;padding:10px 12px;background:transparent;border:none;
+  outline:none;font-size:13px;color:#e5e7eb;font-family:inherit;
+}
+.bv-foot{
+  padding:12px 18px;border-top:1px solid #1f2937;
+  display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;
+}
+.bv-btn{
+  padding:8px 20px;border-radius:5px;font-size:13px;
+  cursor:pointer;font-weight:600;font-family:inherit;border:1px solid #374151;
+}
+.bv-btn.cancel{background:#111827;color:#9ca3af;}
+.bv-btn.cancel:hover{background:#1f2937;color:#e5e7eb;}
+.bv-btn.submit{background:#60a5fa;color:#020617;border-color:#60a5fa;}
+.bv-btn.submit:hover{background:#93c5fd;}
+
+/* ── GO TO COLUMN PANEL ── */
+.gtc-panel{
+  width:200px;flex-shrink:0;border-right:1px solid #1f2937;
+  background:#0a0f1c;display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.gtc-search-wrap{padding:8px 8px 4px;flex-shrink:0;}
+.gtc-search{
+  width:100%;padding:6px 10px 6px 28px;
+  border:1px solid #374151;border-radius:6px;
+  font-size:12px;outline:none;
+  background:#020617 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 8px center;
+  color:#e5e7eb;
+}
+.gtc-search:focus{border-color:#60a5fa;}
+.gtc-list{flex:1;overflow-y:auto;padding:2px 0 8px;}
+.gtc-list::-webkit-scrollbar{width:4px;}
+.gtc-list::-webkit-scrollbar-thumb{background:#374151;border-radius:3px;}
+.gtc-item{
+  padding:7px 12px;font-size:12px;color:#d1d5db;
+  cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  transition:background .1s,color .1s;border-left:2px solid transparent;
+}
+.gtc-item:hover{background:#1f2937;color:#e5e7eb;border-left-color:#60a5fa;}
+.gtc-item.hl{background:#1e3a5f;color:#93c5fd;border-left-color:#60a5fa;}
+
+/* ── RESULTS LAYOUT WITH GTC ── */
+.results-inner{display:flex;flex:1;overflow:hidden;}
+
+/* ── ROW NUMBERS COLUMN ── */
+.rn-col{color:#6b7280;font-size:11px;text-align:right;
+  padding:5px 8px !important;
+  background:#0f172a !important;border-right:1px solid #334155 !important;
+  white-space:nowrap;user-select:none;font-weight:400 !important;}
+thead .rn-col{background:#1e293b !important;color:#6b7280;font-weight:600 !important;}
+
+/* ── SEARCH IN RESULT ── */
+.sir-wrap{
+  display:flex;align-items:center;gap:6px;
+  padding:0 8px;flex-shrink:0;
+}
+.sir-input{
+  padding:4px 10px;
+  border:1.5px solid #d1d5db;
+  border-radius:6px;
+  background:#ffffff;     /* white background */
+  color:#000000;          /* black text */
+  font-size:12px;
+  font-weight:600;        /* bold text */
+  outline:none;
+  width:180px;
+}
+.sir-input::placeholder{
+  color:#6b7280;
+  font-weight:500;
+}
+.sir-input:focus{
+  border-color:#2563eb;   /* blue focus */
+}
+.sir-count{
+  font-size:11px;
+  color:#ffffff;     /* white text */
+  font-weight:500;
+}
+
+/* ══ AUTOCOMPLETE ══ */
+#ac-dropdown{
+  position:fixed;z-index:9999;
+  background:#1e293b;border:1px solid #334155;
+  border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,.7);
+  max-height:220px;overflow-y:auto;min-width:200px;max-width:360px;
+  display:none;font-family:'Fira Code',monospace;font-size:12px;
+}
+#ac-dropdown::-webkit-scrollbar{width:4px;}
+#ac-dropdown::-webkit-scrollbar-thumb{background:#334155;border-radius:2px;}
+.ac-item{
+  padding:6px 12px;cursor:pointer;color:#e2e8f0;
+  display:flex;align-items:center;gap:8px;white-space:nowrap;
+}
+.ac-item:hover,.ac-item.ac-sel{background:#334155;}
+.ac-item.ac-sel{background:#1d4ed8;}
+.ac-badge{
+  font-size:9px;padding:1px 5px;border-radius:3px;
+  font-family:'Segoe UI',sans-serif;font-weight:600;flex-shrink:0;
+}
+.ac-badge.kw{background:#1e3a8a;color:#93c5fd;}
+.ac-badge.tbl{background:#14532d;color:#86efac;}
+.ac-badge.col{background:#3b0764;color:#d8b4fe;}
+.ac-badge.fn{background:#431407;color:#fdba74;}
+.ac-match{color:#fbbf24;}
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="titlebar-logo">
+	QueryForge DataZen
+  </div>
+  <div class="titlebar-center" id="title-conn">No connection selected</div>
+  <div class="titlebar-user" id="titlebar-user" style="display:none;">
+    <span id="titlebar-username"></span>
+    <button class="btn-logout" onclick="doLogout()">Logout</button>
+  </div>
+</div>
+
+<div class="body-wrap">
+<div class="sidebar">
+  <div class="sico on" title="Query Editor" style="pointer-events:none;opacity:0.3">📄</div>
+  <div class="sico" title="Connections" onclick="openConnModal()">🔗</div>
+  <div class="sico" title="History" style="pointer-events:none;opacity:0.3">📋</div>
+  <div class="sico mt" title="Help" style="pointer-events:none;opacity:0.3">❓</div>
+  <div class="sico" title="Settings" style="pointer-events:none;opacity:0.3">⚙️</div>
+</div>
+
+<div class="main">
+  <div class="setup-banner" id="setup-banner">
+    ⚠️ <span><b>No connection yet.</b> Click <b>+ Add</b> to enter your Oracle URL and credentials.</span>
+    <button class="cadd" onclick="openConnModal()" style="margin-left:auto;flex-shrink:0;">+ Add Connection</button>
+  </div>
+
+  <div class="tabbar" id="tabbar"></div>
+
+  <div class="toolbar">
+    <span class="flabel">Fetch Rows</span>
+	<select class="finput" id="fetchrows">
+		<option value="100">100</option>
+		<option value="1000">1000</option>
+		<option value="10000">10000</option>
+		<option value="ALL">All</option>
+	</select>
+    <div class="sep"></div>
+    <button class="tbtn run" title="Run Query (F5)" onclick="runQuery()">▶</button>
+    <button class="tbtn run" title="Run current statement" onclick="runQuery()" style="font-size:10px;">▶|</button>
+    <button class="tbtn stop" title="Stop" onclick="stopQuery()">⏹</button>
+    <div class="sep"></div>
+    <button class="tbtn" title="Format SQL" onclick="formatSQL()">⇌</button>
+    <button class="tbtn" title="Clear editor" onclick="clearEditor()">🗑</button>
+    <button class="tbtn" title="Undo" onclick="document.execCommand('undo')">↩</button>
+    <button class="tbtn" title="Redo" onclick="document.execCommand('redo')">↪</button>
+    <div class="sep"></div>
+    <button class="tbtn" title="Font size +" onclick="changeFontSize(1)">A⁺</button>
+    <button class="tbtn" title="Font size -" onclick="changeFontSize(-1)">A⁻</button>
+    <div class="sep"></div>
+    <button class="tbtn" title="Export to CSV" onclick="exportCSV()">📥</button>
+    <button class="tbtn" title="Find in SQL (Ctrl+F)" onclick="findInSQL()">🔍</button>
+	<button class="tbtn" title="Load table/column metadata for autocomplete" onclick="loadMetadata()" style="font-size:10px;width:auto;padding:0 6px;">⚡ Meta</button>
+    <div class="spin" id="spinner"></div>
+    <div class="conn-area">
+      <select class="csel" id="csel" onchange="selectConn()"><option value="">— Select a connection —</option></select>
+      <button class="cadd" onclick="openConnModal()">+ Add</button>
+    </div>
+  </div>
+
+  <div class="pane-container" id="pane-container">
+    <div class="editor-section" id="editor-section">
+      <div class="ebody" style="flex:1;overflow:hidden;position:relative;">
+        <div class="lnums" id="lnums">1</div>
+        <pre id="hl" aria-hidden="true"></pre>
+        <textarea id="sqled" placeholder="-- Write your Oracle SQL here&#10;SELECT * FROM PER_ALL_PEOPLE_F WHERE ROWNUM &lt;= 100" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+      </div>
+    </div>
+    <div class="resizer" id="resizer"></div>
+    <div class="results-section" id="results-section">
+      <div class="res-bar">
+        <button class="cadd" onclick="exportCSV()" style="font-size:11px;padding:2px 8px;flex-shrink:0;">⬇ CSV</button>
+        <button class="cadd" id="gtc-toggle-btn" onclick="toggleGtcPanel()" style="font-size:11px;padding:2px 8px;flex-shrink:0;" title="Go to Column">→ Column</button>
+        <span id="res-info" style="flex:1;text-align:center;">No data found</span>
+        <div class="sir-wrap">
+          <input class="sir-input" id="sir-input" type="text" placeholder="🔍 Search in Result" oninput="sirSearch(this.value)" onkeydown="sirKeyNav(event)"/>
+          <span class="sir-count" id="sir-count"></span>
+        </div>
+      </div>
+      <div class="results-inner">
+        <div class="gtc-panel" id="gtc-panel" style="display:none;">
+          <div class="gtc-search-wrap">
+            <input class="gtc-search" id="gtc-search" type="text" placeholder="Search" oninput="gtcFilter(this.value)"/>
+          </div>
+          <div class="gtc-list" id="gtc-list"></div>
+        </div>
+        <div class="tbl-wrap" id="rarea"><div class="nodata">No data found</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span style="display:flex;align-items:center;gap:6px;"><div class="sdot" id="sdot"></div><span id="sconn">Not connected</span></span>
+    <span id="srows"></span><span id="stime"></span><span id="sstage" style="color:#ffd740;"></span>
+	<span id="meta-status" style="display:none;font-size:11px;"></span><span style="margin-left:auto;display:flex;align-items:center;gap:12px;">
+    <span style="margin-left:auto;display:flex;align-items:center;gap:12px;">
+      <span id="proxy-badge" style="font-size:10px;padding:2px 8px;border-radius:10px;background:#333;color:#aaa;cursor:help;">⏳ Checking for Active Server…</span>
+      <span id="spos">Ln 1, Col 1</span>
+    </span>
+  </div>
+</div>
+</div>
+
+<!-- ═══ BIND VARIABLES MODAL ═══ -->
+<div class="bv-overlay" id="bv-overlay">
+  <div class="bv-modal">
+    <div class="bv-head">
+      Bind Variables
+      <span id="bv-subtitle"></span>
+      <button class="mclose" onclick="bvCancel()" style="font-size:18px;background:none;border:none;color:#9ca3af;cursor:pointer;">✕</button>
+    </div>
+    <div class="bv-body" id="bv-body"></div>
+    <div class="bv-foot">
+      <button class="bv-btn cancel" onclick="bvCancel()">Cancel</button>
+      <button class="bv-btn submit" onclick="bvSubmit()">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EXCEL-STYLE FILTER POPUP ═══ -->
+<div class="filter-popup" id="filter-popup">
+  <div class="fp-sort">
+    <div class="fp-sort-item" id="fp-sort-asc" onclick="fpSort('asc')">
+      <span class="fp-sort-icon">↑</span> Ascending
+    </div>
+    <div class="fp-sort-item" id="fp-sort-desc" onclick="fpSort('desc')">
+      <span class="fp-sort-icon">↓</span> Descending
+    </div>
+  </div>
+  <div class="fp-divider"></div>
+  <div class="fp-clear" onclick="fpClearFilter()">
+    <span class="fp-clear-icon">✕</span>
+    Clear Filter
+  </div>
+  <div class="fp-divider"></div>
+  <div class="fp-search-wrap">
+    <input class="fp-search" type="text" id="fp-search" placeholder="Search…" oninput="fpSearchValues(this.value)"/>
+  </div>
+  <div class="fp-list" id="fp-list"></div>
+  <div class="fp-footer">
+    <button class="fp-btn ok" onclick="fpApply()">OK</button>
+    <button class="fp-btn cancel" onclick="fpClose()">Cancel</button>
+  </div>
+</div>
+
+<!-- CONNECTION MODAL -->
+<div class="overlay" id="conn-overlay">
+<div class="modal">
+  <div class="mhead"><span class="mhead-title">🔗 Oracle Connection Manager</span><button class="mclose" onclick="closeConnModal()">✕</button></div>
+  <div class="mbody">
+    <div class="tabs-row">
+      <div class="mtab on" onclick="switchMTab('new')">New Connection</div>
+      <div class="mtab" onclick="switchMTab('saved')">Saved Connections</div>
+      <div class="mtab" onclick="switchMTab('howto')">How it Works</div>
+    </div>
+    <div class="mtab-panel on" id="panel-new">
+      <div class="mf">
+		<label>Connection Name</label>
+		<!-- <input type="text" id="mc-name" placeholder="e.g. KUFPEC HCM Production"/> -->
+		<input type="text" id="mc-name" autocomplete="off">
+	  </div>
+      <div class="mf">
+		<label>Oracle Fusion URL</label>
+		<!-- <input type="url" id="mc-url" placeholder="https://iabhbn-dev1.fa.ocs.oraclecloud.com"/> -->
+		<input type="url" id="mc-url" autocomplete="off">
+	  </div>
+      <div class="mf">
+		<label>Username</label>
+		<!-- <input type="text" id="mc-user" placeholder="KUF_HCM_REPORT"/> -->
+		<input type="text" id="mc-user" autocomplete="off">
+	   </div>
+      <div class="mf">
+		<label>Password</label>
+		<!-- <input type="password" id="mc-pass" placeholder="••••••••"/> -->
+		<input type="password" id="mc-pass" autocomplete="off">
+	  </div>
+      <!--<div class="mf">
+        <label>Report Path</label>
+        <input type="text" id="mc-path" value="/Custom/CloudSQL/CloudSQLReport_csv.xdo"/>
+        <div class="info-chip">📌 
+			<b>Report must already exist</b> at <b>/Custom/CloudSQL/CloudSQLReport_csv.xdo</b>
+		</div>
+      </div>-->
+      <div class="mstatus" id="mc-status"></div>
+    </div>
+    <div class="mtab-panel" id="panel-saved"><div id="saved-list"><div style="color:#888;font-size:12px;padding:8px 0;">No connections saved yet.</div></div></div>
+    <div class="mtab-panel" id="panel-howto">
+      <div style="font-size:12px;line-height:1.7;color:#333;">
+        <p><b>How CloudSQL Web Edition works:</b></p>
+        <p style="margin-top:6px;">1. Calls BI Publisher report at <code>/Custom/CloudSQL/CloudSQLReport_csv.xdo</code></p>
+        <p style="margin-top:6px;">2. Base64-encodes your SQL and sends as <code>sql_query</code> parameter.</p>
+        <p style="margin-top:6px;">3. Results returned as CSV and displayed in the table.</p>
+        <p style="margin-top:10px;padding:8px;background:#fff3e0;border-radius:4px;color:#e65100;font-size:11px;">⚠️ CORS note: Start the companion Node.js proxy or enable CORS in Oracle Analytics admin.</p>
+      </div>
+    </div>
+  </div>
+  <div class="mfoot">
+    <button class="mbtn" onclick="testConn()">✓ Test</button>
+    <button class="mbtn" onclick="closeConnModal()">Cancel</button>
+    <button class="mbtn primary" onclick="saveConn()">Save Connection</button>
+  </div>
+</div>
+</div>
+
+<!-- HELP MODAL -->
+<div class="overlay" id="help-overlay">
+<div class="modal" style="width:520px;">
+  <div class="mhead"><span class="mhead-title">❓ Help & Proxy Setup</span><button class="mclose" onclick="document.getElementById('help-overlay').classList.remove('show')">✕</button></div>
+  <div class="mbody" style="font-size:12px;line-height:1.7;">
+    <p><b>Why do I get a CORS/network error?</b></p>
+    <p style="margin-top:4px;">Oracle Fusion Cloud blocks direct browser requests. You need a small local proxy.</p>
+    <pre style="background:#1e1e1e;color:#d4d4d4;padding:10px;border-radius:4px;font-size:11px;margin-top:6px;overflow:auto;">// Save as proxy.js then run: node proxy.js
+const http=require('http'),https=require('https'),url=require('url');
+http.createServer((req,res)=>{
+  res.setHeader('Access-Control-Allow-Origin','*');
+  res.setHeader('Access-Control-Allow-Methods','*');
+  res.setHeader('Access-Control-Allow-Headers','*');
+  if(req.method==='OPTIONS'){res.writeHead(200);res.end();return;}
+  const target=req.headers['x-target-url'];
+  if(!target){res.writeHead(400);res.end('Missing x-target-url');return;}
+  const p=url.parse(target);
+  const opts={hostname:p.hostname,port:443,path:p.path,method:req.method,
+    headers:{...req.headers,host:p.hostname}};
+  delete opts.headers['x-target-url'];
+  const px=https.request(opts,r=>{res.writeHead(r.statusCode,r.headers);r.pipe(res);});
+  px.on('error',e=>{res.writeHead(500);res.end(e.message);});
+  req.pipe(px);
+}).listen(3737,()=>console.log('Proxy on h'));</pre>
+  </div>
+  <div class="mfoot"><button class="mbtn primary" onclick="document.getElementById('help-overlay').classList.remove('show')">Close</button></div>
+</div>
+</div>
+
+<script>
+/* SQL keywords */
+var SQL_KW=/\b(SELECT|FROM|WHERE|AND|OR|NOT|IN|EXISTS|BETWEEN|LIKE|IS|NULL|JOIN|LEFT|RIGHT|INNER|OUTER|FULL|CROSS|ON|GROUP\s+BY|ORDER\s+BY|HAVING|UNION|ALL|DISTINCT|AS|LIMIT|OFFSET|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|INDEX|VIEW|DROP|ALTER|ADD|COLUMN|PRIMARY|KEY|FOREIGN|REFERENCES|CONSTRAINT|DEFAULT|UNIQUE|CHECK|ROWNUM|FETCH|NEXT|ROWS|ONLY|WITH|CASE|WHEN|THEN|ELSE|END|BEGIN|COMMIT|ROLLBACK|TRUNCATE|TOP|ASC|DESC|BY|CONNECT|PRIOR|LEVEL|PIVOT|MERGE|USING|MATCHED|DECLARE|PROCEDURE|FUNCTION|PACKAGE|RETURN|EXCEPTION|DUAL|SYSDATE|SYSTIMESTAMP)\b/gi;
+var SQL_FN=/\b(COUNT|SUM|AVG|MAX|MIN|COALESCE|NVL|NVL2|DECODE|TRIM|LTRIM|RTRIM|UPPER|LOWER|SUBSTR|INSTR|LENGTH|TO_DATE|TO_CHAR|TO_NUMBER|TO_TIMESTAMP|TRUNC|ROUND|FLOOR|CEIL|MOD|ABS|SIGN|POWER|SQRT|CONCAT|REPLACE|TRANSLATE|LPAD|RPAD|RANK|DENSE_RANK|ROW_NUMBER|LEAD|LAG|OVER|PARTITION|LISTAGG|WITHIN|EXTRACT|MONTHS_BETWEEN|ADD_MONTHS|LAST_DAY|NEXT_DAY|CAST|NULLIF|GREATEST|LEAST|REGEXP_LIKE|REGEXP_SUBSTR|REGEXP_REPLACE|SYS_GUID|WM_CONCAT)\s*(?=\()/gi;
+
+/* ── State ── */
+var tabCounter=0, tabs=[], activeTab=0;
+var connections=[], activeConn=null;
+var resultData=[], resultCols=[];
+var fontSize=13, running=false;
+var sortCol=null, sortAsc=true;
+var colFilters={};   // col -> Set (of allowed string values) | null
+
+/* ── Filter popup working state ── */
+var fpCol=null, fpAllValues=[], fpPending=new Set();
+
+/* ══════════ INIT ══════════ */
+window.onload=function(){
+  // Restore user session from qfdz_session (set by login.html)
+  var session=null;
+  try{
+    session=JSON.parse(sessionStorage.getItem('qfdz_session')||localStorage.getItem('qfdz_session')||'null');
+  }catch(e){}
+  if(session&&session.id){
+    // Show username + logout in titlebar
+    document.getElementById('titlebar-username').textContent=session.name||session.username;
+    document.getElementById('titlebar-user').style.display='flex';
+  }
+  loadConns();
+  addTab();
+  renderTabs();
+  activateTab(0);
+  var ta=document.getElementById('sqled');
+  ta.addEventListener('input',function(){doHL();doLN();});
+  ta.addEventListener('scroll',syncScroll);
+  ta.addEventListener('keydown',handleKeys);
+  ta.addEventListener('keyup',updatePos);
+  ta.addEventListener('click',updatePos);
+  initResizer();
+  doHL();doLN();
+  checkBanner();
+  setTimeout(function(){checkProxy(function(){});},500);
+  // Close filter popup on outside click
+  document.addEventListener('mousedown',function(e){
+    var popup=document.getElementById('filter-popup');
+    if(popup.classList.contains('show')&&!popup.contains(e.target)&&!e.target.closest('.th-filter-btn')){
+      fpClose();
     }
   });
+};
+
+/* ══════════ TABS ══════════ */
+function addTab(){
+  tabCounter++;
+  tabs.push({id:tabCounter,name:'New '+tabCounter,sql:'',results:null,cols:[],elapsed:null});
+  renderTabs();
+  activateTab(tabs.length-1);
 }
-
-// ── CORS headers helper — applied to EVERY response ──
-function setCORSHeaders(res) {
-  res.setHeader('Access-Control-Allow-Origin',  '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.setHeader('Access-Control-Allow-Headers', '*');
-  res.setHeader('Access-Control-Expose-Headers','*');
+function removeTab(i,e){
+  e.stopPropagation();
+  if(tabs.length===1){tabs[0].sql='';document.getElementById('sqled').value='';doHL();doLN();return;}
+  tabs.splice(i,1);
+  if(activeTab>=tabs.length)activeTab=tabs.length-1;
+  renderTabs();activateTab(activeTab);
 }
-
-// ── Create the proxy server ──
-var server = http.createServer(function(req, res) {
-
-  // ✅ FIX 1: Set CORS headers FIRST on every request, before any route logic
-  setCORSHeaders(res);
-
-  // Handle preflight OPTIONS for ALL routes
-  if (req.method === 'OPTIONS') {
-    res.writeHead(204);
-    res.end();
-    return;
+function activateTab(i){
+  if(tabs[activeTab])tabs[activeTab].sql=document.getElementById('sqled').value;
+  activeTab=i;
+  document.getElementById('sqled').value=tabs[i].sql||'';
+  doHL();doLN();
+  colFilters={};sortCol=null;
+  if(tabs[i].results){
+    resultData=tabs[i].results;resultCols=tabs[i].cols;
+    renderTable();
+  }else{
+    resultData=[];resultCols=[];
+    document.getElementById('rarea').innerHTML='<div class="nodata">No data found</div>';
+    document.getElementById('res-info').textContent='No data found';
+    document.getElementById('srows').textContent='';
+    document.getElementById('stime').textContent='';
   }
+  renderTabs();
+}
+function renderTabs(){
+  var bar=document.getElementById('tabbar');
+  bar.innerHTML=tabs.map(function(t,i){
+    return '<div class="tab'+(i===activeTab?' active':'')+'" onclick="activateTab('+i+')">'
+      +'📄 '+esc(t.name)
+      +' <span class="tab-x" onclick="removeTab('+i+',event)">✕</span></div>';
+  }).join('')+'<div class="tab-add" onclick="addTab()" title="New tab">+</div>';
+}
 
-  log('REQ', req.method + ' ' + req.url);
+/* ══════════ CONNECTIONS ══════════ */
+function getCurrentUserId(){
+  try{
+    var s=JSON.parse(sessionStorage.getItem('qfdz_session')||localStorage.getItem('qfdz_session')||'null');
+    return s&&s.id?String(s.id):null;
+  }catch(e){return null;}
+}
 
-  // ── USER COUNT ─────────────────────────────────────────────────
-  // ✅ FIX 2: Added missing /user-count endpoint
-  if (req.url === '/user-count' && req.method === 'GET') {
-    pool.query('SELECT COUNT(*) FROM users')
-      .then(result => {
-        const count = parseInt(result.rows[0].count, 10);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ count }));
-      })
-      .catch(err => {
-        console.error(err);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ message: 'DB error' }));
+function doLogout(){
+  sessionStorage.removeItem('qfdz_session');
+  localStorage.removeItem('qfdz_session');
+  localStorage.removeItem('csWebConns');
+  window.location.href='https://queryforge-datazen.vercel.app/login.html';
+}
+
+async function loadConns(){
+  var uid=getCurrentUserId();
+  if(!uid){
+    // fallback to localStorage for unauthenticated use
+    try{connections=JSON.parse(localStorage.getItem('csWebConns')||'[]');}catch(e){connections=[];}
+    renderConnSel();renderSavedConns();return;
+  }
+  try{
+    var r=await fetch(PROXY_URL+'/connections?user_id='+encodeURIComponent(uid));
+    var d=await r.json();
+    connections=(d.connections||[]).map(function(c){
+      return {id:c.id,name:c.name,type:c.type,url:c.host,user:c.username,pass:c.password,host:c.host,port:c.port,database_name:c.database_name,reportPath:'/Custom/CloudSQL/CloudSQLReport_csv.xdo'};
+    });
+  }catch(e){
+    console.warn('Could not fetch connections from server, using localStorage fallback',e);
+    try{connections=JSON.parse(localStorage.getItem('csWebConns')||'[]');}catch(e2){connections=[];}
+  }
+  renderConnSel();renderSavedConns();
+}
+
+function saveConns(){try{localStorage.setItem('csWebConns',JSON.stringify(connections));}catch(e){}}
+function renderConnSel(){
+  var sel=document.getElementById('csel'),cur=sel.value;
+  sel.innerHTML='<option value="">— Select a connection —</option>';
+  connections.forEach(function(c,i){var o=document.createElement('option');o.value=i;o.textContent=c.name;sel.appendChild(o);});
+  if(cur!=='')sel.value=cur;
+}
+function selectConn(){
+  var v=document.getElementById('csel').value;
+  if(v===''){activeConn=null;setStatus('','Not connected');document.getElementById('title-conn').textContent='No connection selected';return;}
+  activeConn=connections[parseInt(v)];
+  setStatus('ok',activeConn.name);
+  document.getElementById('title-conn').textContent='Connected to ' + activeConn.name;
+}
+function switchMTab(name){
+  document.querySelectorAll('.mtab').forEach(function(t,i){var names=['new','saved','howto'];t.classList.toggle('on',names[i]===name);document.getElementById('panel-'+names[i]).classList.toggle('on',names[i]===name);});
+  if(name==='saved')renderSavedConns();
+}
+function renderSavedConns(){
+  var el=document.getElementById('saved-list');
+  if(!connections.length){el.innerHTML='<div style="color:#888;font-size:12px;padding:8px 0;">No connections saved yet.</div>';return;}
+  el.innerHTML='<table style="width:100%;font-size:12px;border-collapse:collapse;"><thead><tr style="background:#e8f0fb;"><th style="padding:5px 8px;text-align:left;">Name</th><th style="padding:5px 8px;text-align:left;">URL</th><th></th></tr></thead><tbody>'
+    +connections.map(function(c,i){return '<tr><td style="padding:5px 8px;border-bottom:1px solid #eef2f8;">'+esc(c.name)+'</td><td style="padding:5px 8px;border-bottom:1px solid #eef2f8;color:#555;">'+esc(c.url)+'</td><td style="padding:5px 8px;border-bottom:1px solid #eef2f8;"><button onclick="loadConn('+i+')" style="font-size:11px;padding:2px 8px;border:1px solid #1565c0;background:#fff;color:#1565c0;border-radius:3px;cursor:pointer;margin-right:4px;">Load</button><button onclick="deleteConn('+i+')" style="font-size:11px;padding:2px 8px;border:1px solid #b71c1c;background:#fff;color:#b71c1c;border-radius:3px;cursor:pointer;">Delete</button></td></tr>';}).join('')+'</tbody></table>';
+}
+function loadConn(i){document.getElementById('csel').value=i;selectConn();closeConnModal();}
+async function deleteConn(i){
+  if(!confirm('Delete "'+connections[i].name+'"?'))return;
+  var conn=connections[i];
+  var uid=getCurrentUserId();
+  if(uid&&conn.id){
+    try{
+      await fetch(PROXY_URL+'/connections/'+conn.id,{method:'DELETE'});
+    }catch(e){console.warn('Server delete failed',e);}
+  }
+  connections.splice(i,1);saveConns();renderConnSel();renderSavedConns();
+  if(activeConn&&!connections.includes(activeConn)){activeConn=null;setStatus('','Not connected');document.getElementById('title-conn').textContent='No connection selected';}
+}
+function openConnModal(){document.getElementById('conn-overlay').classList.add('show');setMStatus('','');}
+function closeConnModal(){document.getElementById('conn-overlay').classList.remove('show');}
+function setMStatus(type,msg){var el=document.getElementById('mc-status');el.className='mstatus'+(type?' '+type:'');el.textContent=msg;}
+function testConn(){
+  var url=document.getElementById('mc-url').value.trim();
+  if(!url){setMStatus('err','Enter a URL');return;}
+  setMStatus('info','Checking URL format…');
+  setTimeout(function(){try{new URL(url);setMStatus('ok','✓ URL valid.');}catch(e){setMStatus('err','Invalid URL: '+e.message);}},600);
+}
+async function saveConn(){
+  var name=document.getElementById('mc-name').value.trim();
+  var url=document.getElementById('mc-url').value.trim().replace(/\/$/,'');
+  var user=document.getElementById('mc-user').value.trim();
+  var pass=document.getElementById('mc-pass').value;
+  var path = '/Custom/CloudSQL/CloudSQLReport_csv.xdo';
+  if(!name){setMStatus('err','Enter a connection name');return;}
+  if(!url){setMStatus('err','Enter the Oracle URL');return;}
+  if(!user){setMStatus('err','Enter username');return;}
+
+  var uid=getCurrentUserId();
+  if(uid){
+    try{
+      var r=await fetch(PROXY_URL+'/connections',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user_id:parseInt(uid),name:name,type:'oracle',host:url,username:user,password:pass})
       });
+      var d=await r.json();
+      if(!r.ok){setMStatus('err',d.message||'Failed to save');return;}
+      var saved=d.connection;
+      connections.push({id:saved.id,name:name,url:url,user:user,pass:pass,reportPath:path});
+    }catch(e){
+      console.warn('Server save failed, saving locally',e);
+      connections.push({name,url,user,pass,reportPath:path});
+      saveConns();
+    }
+  }else{
+    connections.push({name,url,user,pass,reportPath:path});
+    saveConns();
+  }
+  renderConnSel();
+  document.getElementById('csel').value=connections.length-1;
+  selectConn();closeConnModal();checkBanner();
+}
+function checkBanner(){document.getElementById('setup-banner').classList.toggle('show',connections.length===0);}
+
+/* ══════════ PROXY ══════════ */
+var PROXY_URL='https://queryforge-backend-jjxx.onrender.com',proxyAvailable=false,proxyChecked=false;
+function checkProxy(cb){
+  if(proxyChecked){cb(proxyAvailable);return;}
+
+  // Show "checking" state visually while we wait
+  var el=document.getElementById('proxy-badge');
+  if(el){el.textContent='⏳ Checking for Active Server…';el.style.color='#92400e';el.style.background='#fef3c7';}
+
+  // Render.com free tier cold-starts can take 15-30s — use a long timeout
+  fetch(PROXY_URL,{method:'OPTIONS',signal:AbortSignal.timeout(20000)})
+    .then(function(){
+      proxyAvailable=true;proxyChecked=true;
+      updateProxyStatus(true);cb(true);
+    })
+    .catch(function(){
+      // First attempt failed — wait 3s and retry once before giving up
+      setTimeout(function(){
+        fetch(PROXY_URL,{method:'OPTIONS',signal:AbortSignal.timeout(15000)})
+          .then(function(){proxyAvailable=true;proxyChecked=true;updateProxyStatus(true);cb(true);})
+          .catch(function(){proxyAvailable=false;proxyChecked=true;updateProxyStatus(false);cb(false);});
+      },3000);
+    });
+}
+function updateProxyStatus(ok){
+  var el=document.getElementById('proxy-badge');if(!el)return;
+  el.textContent=ok?'🟢 Server Active':'🔴 No Active Server';
+  el.style.color=ok?'#1b5e20':'#b71c1c';el.style.background=ok?'#e8f5e9':'#ffebee';
+}
+function makeFetch(targetUrl,options){
+  if(proxyChecked&&!proxyAvailable){var age=Date.now()-(makeFetch._lastCheck||0);if(age>15000){proxyChecked=false;makeFetch._lastCheck=Date.now();}}
+  return new Promise(function(resolve){
+    checkProxy(function(hasProxy){
+      if(hasProxy){var h=Object.assign({},options.headers||{});h['X-Target-URL']=targetUrl;resolve(fetch(PROXY_URL,Object.assign({},options,{headers:h})));}
+      else resolve(fetch(targetUrl,options));
+    });
+  });
+}
+function soapCall(url,body,auth){return makeFetch(url,{method:'POST',headers:{'Content-Type':'application/soap+xml; charset=UTF-8','Authorization':auth},body:body});}
+
+/* ══════════ ORACLE ══════════ */
+function basicAuth(c){return 'Basic '+btoa(c.user+':'+c.pass);}
+function toBase64(s){try{return btoa(unescape(encodeURIComponent(s)));}catch(e){return btoa(s);}}
+function buildRunReportSOAP(conn,sql){
+  var b64=toBase64(sql),rp=conn.reportPath||'/Custom/CloudSQL/CloudSQLReport_csv.xdo';
+  return '<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:pub="http://xmlns.oracle.com/oxp/service/PublicReportService"><soap:Header/><soap:Body><pub:runReport><pub:reportRequest><pub:reportAbsolutePath>'+rp+'</pub:reportAbsolutePath><pub:sizeOfDataChunkDownload>-1</pub:sizeOfDataChunkDownload><pub:flattenXML>false</pub:flattenXML><pub:parameterNameValues><pub:item><pub:name>sql_query</pub:name><pub:values><pub:item><![CDATA['+b64+']]></pub:item></pub:values></pub:item><pub:item><pub:name>xdo_cursor</pub:name><pub:values><pub:item></pub:item></pub:values></pub:item></pub:parameterNameValues></pub:reportRequest></pub:runReport></soap:Body></soap:Envelope>';
+}
+function parseCSVResponse(xml){
+  var m=xml.match(/<([a-zA-Z0-9_:]+)reportBytes[^>]*>([\s\S]*?)<\/\1reportBytes>/);
+  if(!m)return{rows:[],cols:[],error:'No reportBytes found.\n'+xml};
+  var b64=(m[2]||'').trim(),csv='';
+  try{csv=atob(b64);if(csv.charCodeAt(0)===0xFEFF||csv.startsWith('ï»¿'))csv=csv.replace(/^\uFEFF|^\u00EF?\u00BB\u00BF/,'');}
+  catch(e){return{rows:[],cols:[],error:'Base64 decode failed: '+e.message};}
+  return parseCSV(csv);
+}
+function parseCSV(text){
+  var lines=text.trim().split('\n');if(!lines.length||!lines[0].trim())return{rows:[],cols:[]};
+  function pr(line){var r=[],cur='',inQ=false;for(var i=0;i<line.length;i++){var c=line[i];if(c==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}else if(c===','&&!inQ){r.push(cur);cur='';}else cur+=c;}r.push(cur);return r;}
+  var cols=pr(lines[0]),rows=[];
+  for(var i=1;i<lines.length;i++){if(!lines[i].trim())continue;var v=pr(lines[i]),obj={};cols.forEach(function(c,j){obj[c]=v[j]!==undefined?v[j]:'';});rows.push(obj);}
+  return{rows,cols};
+}
+
+/* ══════════ RUN QUERY ══════════ */
+function runQuery(){
+  // Only reset if stuck from a previously cancelled bind-variable modal,
+  // NOT during an actual live query (_executeSQL sets running=true and resets in .finally)
+  if(running && !setLoading._active){ running=false; setLoading(false); setStage(''); }
+
+  var ta = document.getElementById('sqled');
+  tabs[activeTab].sql = ta.value;
+
+  var fullText  = ta.value;
+  var cursorPos = ta.selectionStart;
+  var selStart  = ta.selectionStart;
+  var selEnd    = ta.selectionEnd;
+  var sql = '';
+  var mode = '';
+
+  if(selEnd > selStart){
+    // MODE 1: User has text selected → run exactly that
+    sql  = fullText.slice(selStart, selEnd).trim();
+    mode = 'selection';
+  } else {
+    // MODE 2: No selection → find the statement the cursor sits in
+    var stmts = [];
+    var re = /[^;]+/g, m;
+    while((m = re.exec(fullText)) !== null){
+      var s = m.index, e = m.index + m[0].length;
+      var text = m[0].trim();
+      if(text) stmts.push({ text: text, start: s, end: e });
+    }
+    var found = null;
+    for(var i = 0; i < stmts.length; i++){
+      if(cursorPos >= stmts[i].start && cursorPos <= stmts[i].end + 1){
+        found = stmts[i]; break;
+      }
+    }
+    if(!found && stmts.length) found = stmts[stmts.length - 1];
+    sql  = found ? found.text : fullText.trim();
+    mode = stmts.length > 1 ? 'statement' : 'full';
+  }
+
+  if(!activeConn){ showErr('No connection selected.\nChoose or add a connection first.'); return; }
+  if(!sql){ showErr(mode === 'selection' ? 'Selected text is empty.' : 'Write a SQL query first.'); return; }
+
+  sql = sql.replace(/;\s*$/, '');
+
+  setStage(
+    mode === 'selection' ? '▶ Running selection…' :
+    mode === 'statement' ? '▶ Running statement at cursor…' : ''
+  );
+
+  var params = detectBindVars(sql);
+  if(params.length > 0){
+    running = true;
+    setLoading(true);
+    setStage('Waiting for bind variable values…');
+    openBindVarsModal(sql, params);
+    return;
+  }
+  _executeSQL(sql);
+}
+function _executeSQL(sql){
+  var val = document.getElementById('fetchrows').value;
+  var limit = (val === 'ALL') ? Infinity : parseInt(val) || 100;
+  clearResults();
+  running=true;setLoading(true);setStage('Running...');
+  var auth=basicAuth(activeConn),conn=activeConn,t0=Date.now();
+  soapCall(conn.url+'/xmlpserver/services/ExternalReportWSSService',buildRunReportSOAP(conn,sql),auth)
+    .then(function(resp){
+      if(resp.status===401)throw new Error('Authentication failed (HTTP 401).');
+      if(resp.status===403)throw new Error('Access denied (HTTP 403).');
+      if(resp.status===404)throw new Error('Report not found (HTTP 404).\n'+(conn.reportPath||'/Custom/CloudSQL/CloudSQLReport_csv.xdo'));
+      if(!resp.ok)return resp.text().then(function(t){throw new Error('HTTP '+resp.status+':\n'+t.slice(0,500));});
+      return resp.text();
+    })
+    .then(function(xml){
+      var elapsed=((Date.now()-t0)/1000).toFixed(2);
+      var fm=xml.match(/<(?:faultstring|message)[^>]*>([\s\S]*?)<\/(?:faultstring|message)>/);
+      if(fm&&xml.indexOf('<pub:reportBytes')===-1)throw new Error('Oracle error:\n'+fm[1].trim());
+      var p=parseCSVResponse(xml);
+      if(p.error){showErr(p.error);return;}
+      var rows=p.rows.slice(0,limit),cols=p.cols;
+      tabs[activeTab].results=rows;tabs[activeTab].cols=cols;tabs[activeTab].elapsed=elapsed;
+      resultData=rows;resultCols=cols;colFilters={};sortCol=null;
+      renderTable();setStatus('ok',conn.name);
+    })
+    .catch(function(e){
+      var msg=e.message||String(e);
+      if(/fetch|Failed to fetch|NetworkError|Load failed/i.test(msg))msg='CORS / Network blocked.\n\nFIX:\n  1. node cloudsql_proxy.js\n  2. Keep that window open\n  3. Click Run Query again\n\nRaw: '+e.message;
+      showErr(msg);setStatus('err',conn?conn.name:'Error');
+    })
+    .finally(function(){running=false;setLoading(false);setStage('');});
+}
+function stopQuery(){running=false;setLoading(false);setStage('Stopped');setTimeout(function(){setStage('');},2000);}
+
+/* ══════════ TABLE RENDER ══════════ */
+function getFilteredData(){
+  return resultData.filter(function(row){
+    return resultCols.every(function(c){
+      var f=colFilters[c];
+      if(!f)return true;
+      return f.has(String(row[c]==null?'':row[c]));
+    });
+  });
+}
+
+function renderTable(){
+  var filtered=getFilteredData();
+  var elapsed=tabs[activeTab]?(tabs[activeTab].elapsed||'0'):'0';
+  var total=resultData.length;
+  document.getElementById('res-info').textContent=
+    filtered.length+' row'+(filtered.length!==1?'s':'')
+    +(filtered.length!==total?' (filtered from '+total+')':'')
+    +' in '+elapsed+'s';
+  document.getElementById('srows').textContent=filtered.length+' rows';
+  document.getElementById('stime').textContent=elapsed+'s';
+
+  // Clear search highlights
+  document.getElementById('sir-input').value='';
+  document.getElementById('sir-count').textContent='';
+  _sirMatches=[];_sirIdx=-1;
+
+  if(!filtered.length){
+    document.getElementById('rarea').innerHTML='<div class="nodata">Query returned no rows</div>';
+    if(gtcOpen)buildGtcList('');
     return;
   }
 
-  // ── PING ───────────────────────────────────────────────────────
-  if (req.url === '/ping' && req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true }));
-    return;
+  // ★ Row number column header
+  var h='<table><thead><tr><th class="rn-col">#</th>';
+  resultCols.forEach(function(c){
+    var arrow=sortCol===c?(sortAsc?' ▲':' ▼'):'';
+    var hasFilter=colFilters[c]!=null;
+    var iconFill=hasFilter?'currentColor':'none';
+    h+='<th>'
+      +'<div class="th-inner">'
+      +'<span class="th-label" onclick="clickSort(\''+escJ(c)+'\')" title="Sort by '+esc(c)+'">'+esc(c)+arrow+'</span>'
+      +'<button class="th-filter-btn'+(hasFilter?' active':'')+'" '
+      +'onclick="fpOpen(event,\''+escJ(c)+'\')" title="Filter">'
+      +'<svg width="11" height="11" viewBox="0 0 24 24" fill="'+iconFill+'" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">'
+      +'<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>'
+      +'</svg>'
+      +'</button>'
+      +'</div>'
+      +'</th>';
+  });
+  h+='</tr></thead><tbody>';
+  // ★ Add row number cell per row
+  filtered.forEach(function(row, rowIdx){
+    h+='<tr><td class="rn-col">'+(rowIdx+1)+'</td>';
+    resultCols.forEach(function(c){
+      var v=row[c];
+      if(v===null||v===undefined||v==='')h+='<td class="null-cell">(null)</td>';
+      else h+='<td>'+esc(String(v))+'</td>';
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  document.getElementById('rarea').innerHTML=h;
+
+  // Rebuild go-to-column list if open
+  if(gtcOpen) buildGtcList(document.getElementById('gtc-search').value);
+}
+
+/* ══════════ SORT ══════════ */
+function clickSort(col){
+  if(sortCol===col)sortAsc=!sortAsc;else{sortCol=col;sortAsc=true;}
+  resultData.sort(function(a,b){return cmpVals(a[col],b[col],sortAsc);});
+  if(tabs[activeTab])tabs[activeTab].results=resultData.slice();
+  renderTable();
+}
+function cmpVals(v1,v2,asc){
+  if(v1==null&&v2==null)return 0;
+  if(v1==null)return 1;if(v2==null)return -1;
+  var n1=parseFloat(v1),n2=parseFloat(v2);
+  if(!isNaN(n1)&&!isNaN(n2))return asc?n1-n2:n2-n1;
+  return asc?String(v1).localeCompare(String(v2)):String(v2).localeCompare(String(v1));
+}
+
+/* ══════════ EXCEL FILTER POPUP ══════════ */
+function fpOpen(e,col){
+  e.stopPropagation();
+  fpCol=col;
+  var popup=document.getElementById('filter-popup');
+
+  // Collect unique values
+  var seen=new Set();
+  resultData.forEach(function(row){seen.add(String(row[col]==null?'':row[col]));});
+  fpAllValues=Array.from(seen).sort(function(a,b){
+    var na=parseFloat(a),nb=parseFloat(b);
+    if(!isNaN(na)&&!isNaN(nb))return na-nb;
+    return a.localeCompare(b);
+  });
+  var existing=colFilters[col];
+  fpPending=existing?new Set(existing):new Set(fpAllValues);
+  document.getElementById('fp-search').value='';
+  fpRenderList(fpAllValues);
+
+  // Show temporarily off-screen to measure real height
+  popup.style.visibility='hidden';
+  popup.style.top='0px';
+  popup.style.left='0px';
+  popup.style.bottom='auto';
+  popup.classList.add('show');
+
+  // Now measure
+  var btn=e.currentTarget, rect=btn.getBoundingClientRect();
+  var popupH=popup.offsetHeight;
+  var popupW=popup.offsetWidth||280;
+  var spaceBelow=window.innerHeight-rect.bottom-6;
+  var spaceAbove=rect.top-6;
+
+  // Horizontal: align to button left, clamp to viewport
+  var left=rect.left;
+  if(left+popupW>window.innerWidth-4)left=window.innerWidth-popupW-4;
+  if(left<4)left=4;
+  popup.style.left=left+'px';
+
+  // Vertical: prefer below, flip above if not enough room
+  if(spaceBelow>=popupH){
+    popup.style.top=(rect.bottom+4)+'px';
+    popup.style.bottom='auto';
+  } else if(spaceAbove>=popupH){
+    popup.style.top='auto';
+    popup.style.bottom=(window.innerHeight-rect.top+4)+'px';
+  } else {
+    // Neither fits perfectly — pick whichever has more space, clamp to viewport
+    if(spaceBelow>=spaceAbove){
+      popup.style.top=(rect.bottom+4)+'px';
+      popup.style.bottom='auto';
+      // Cap max-height so it fits
+      popup.style.maxHeight=spaceBelow+'px';
+    } else {
+      popup.style.top='auto';
+      popup.style.bottom=(window.innerHeight-rect.top+4)+'px';
+      popup.style.maxHeight=spaceAbove+'px';
+    }
   }
 
-  // ── REGISTER ──────────────────────────────────────────────────
-  if (req.url === '/register' && req.method === 'POST') {
-    return getBody(req, async data => {
-      const { name, username, email, password } = data;
+  popup.style.visibility='visible';
 
-      if (!name || !username || !email || !password) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ message: 'Missing fields' }));
+  // Highlight active sort
+  document.getElementById('fp-sort-asc').classList.toggle('active-sort', sortCol===col && sortAsc);
+  document.getElementById('fp-sort-desc').classList.toggle('active-sort', sortCol===col && !sortAsc);
+
+  var lbl=col.length>20?col.slice(0,18)+'…':col;
+  var lblEl=document.getElementById('fp-col-label');
+  if(lblEl)lblEl.textContent=lbl;
+}
+
+function fpRenderList(values){
+  var list=document.getElementById('fp-list');
+  if(!values.length){list.innerHTML='<div style="padding:8px 14px;font-size:12px;color:#888;">No matching values</div>';return;}
+  var allChecked=values.length>0&&values.every(function(v){return fpPending.has(v);});
+  var h='<div class="fp-list-item" onclick="fpToggleAll()">'
+    +'<input type="checkbox" '+(allChecked?'checked':'')+'>'
+    +'<label><b>Select All</b></label>'
+    +'</div>';
+  values.forEach(function(v){
+    var checked=fpPending.has(v);
+    var display=(v==='')?'<i style="color:#aaa">(Blank)</i>':esc(v);
+    h+='<div class="fp-list-item" onclick="fpToggleVal(\''+escJ(v)+'\')">'
+      +'<input type="checkbox" '+(checked?'checked':'')+'>'
+      +'<label title="'+esc(v)+'">'+display+'</label>'
+      +'</div>';
+  });
+  list.innerHTML=h;
+}
+
+function fpSearchValues(q){
+  var vals=q.trim()?fpAllValues.filter(function(v){return v.toLowerCase().includes(q.toLowerCase());}):fpAllValues;
+  fpRenderList(vals);
+}
+
+function fpToggleVal(v){
+  if(fpPending.has(v))fpPending.delete(v);else fpPending.add(v);
+  fpSearchValues(document.getElementById('fp-search').value);
+}
+
+function fpToggleAll(){
+  var q=document.getElementById('fp-search').value.trim();
+  var visible=q?fpAllValues.filter(function(v){return v.toLowerCase().includes(q.toLowerCase());}):fpAllValues;
+  var allOn=visible.every(function(v){return fpPending.has(v);});
+  if(allOn){visible.forEach(function(v){fpPending.delete(v);});}
+  else{visible.forEach(function(v){fpPending.add(v);});}
+  fpRenderList(visible.length===fpAllValues.length?fpAllValues:visible);
+}
+
+/* Sort buttons in popup — these work on click */
+function fpSort(dir){
+  var col=fpCol;  // capture before closing
+  fpClose();
+  if(!col)return;
+  sortCol=col; sortAsc=(dir==='asc');
+  resultData.sort(function(a,b){return cmpVals(a[col],b[col],sortAsc);});
+  if(tabs[activeTab])tabs[activeTab].results=resultData.slice();
+  renderTable();
+}
+
+function fpClearFilter(){
+  var col=fpCol;
+  fpClose();
+  if(!col)return;
+  colFilters[col]=null;
+  renderTable();
+}
+
+function fpApply(){
+  if(!fpCol)return;
+  // If all values are selected → remove filter (show all)
+  if(fpPending.size>=fpAllValues.length&&fpAllValues.every(function(v){return fpPending.has(v);})){
+    colFilters[fpCol]=null;
+  }else{
+    colFilters[fpCol]=new Set(fpPending);
+  }
+  fpClose();
+  renderTable();
+}
+
+function fpClose(){
+  var popup=document.getElementById('filter-popup');
+  popup.classList.remove('show');
+  popup.style.maxHeight='';
+  popup.style.visibility='';
+  fpCol=null;
+}
+
+/* ══════════ EXPORT ══════════ */
+function exportCSV(){
+  var data=getFilteredData();if(!data.length){alert('No data to export.');return;}
+  function q(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';}
+  var lines=[resultCols.map(q).join(',')];
+  data.forEach(function(r){lines.push(resultCols.map(function(c){return q(r[c]);}).join(','));});
+  var blob=new Blob([lines.join('\r\n')],{type:'text/csv'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='cloudsql_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+
+function showErr(msg){document.getElementById('rarea').innerHTML='<div class="errdata">⚠ '+esc(msg)+'</div>';document.getElementById('res-info').textContent='Error';document.getElementById('srows').textContent='';document.getElementById('stime').textContent='';}
+function clearResults(){document.getElementById('rarea').innerHTML='';document.getElementById('res-info').textContent='Running…';document.getElementById('srows').textContent='';document.getElementById('stime').textContent='';}
+
+/* ══════════ RESIZER ══════════ */
+function initResizer(){
+  var resizer=document.getElementById('resizer'),es=document.getElementById('editor-section');
+  var dragging=false,startY,startH;
+  resizer.addEventListener('mousedown',function(e){dragging=true;startY=e.clientY;startH=es.offsetHeight;document.body.style.userSelect='none';document.body.style.cursor='row-resize';e.preventDefault();});
+  document.addEventListener('mousemove',function(e){if(!dragging)return;var nh=startH+(e.clientY-startY),c=document.getElementById('pane-container'),mn=80,mx=c.offsetHeight-120;es.style.height=Math.max(mn,Math.min(mx,nh))+'px';});
+  document.addEventListener('mouseup',function(){if(!dragging)return;dragging=false;document.body.style.userSelect='';document.body.style.cursor='';});
+}
+
+/* ══════════ EDITOR ══════════ */
+function handleKeys(e){
+  if(e.key==='Tab'){e.preventDefault();var ta=e.target,s=ta.selectionStart;ta.value=ta.value.slice(0,s)+'  '+ta.value.slice(ta.selectionEnd);ta.selectionStart=ta.selectionEnd=s+2;doHL();doLN();}
+  if(e.key==='F5'||((e.ctrlKey||e.metaKey)&&e.key==='Enter')){e.preventDefault();runQuery();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='f'){e.preventDefault();findInSQL();}
+}
+function updatePos(){var ta=document.getElementById('sqled'),v=ta.value.slice(0,ta.selectionStart),ls=v.split('\n');document.getElementById('spos').textContent='Ln '+ls.length+', Col '+(ls[ls.length-1].length+1);}
+function syncScroll(){var ta=document.getElementById('sqled');document.getElementById('hl').scrollTop=ta.scrollTop;document.getElementById('hl').scrollLeft=ta.scrollLeft;document.getElementById('lnums').scrollTop=ta.scrollTop;}
+function doLN(){var ta=document.getElementById('sqled'),n=(ta.value||'').split('\n').length,a=[];for(var i=1;i<=n;i++)a.push(i);document.getElementById('lnums').textContent=a.join('\n');}
+function doHL(){document.getElementById('hl').innerHTML=sqlHL(document.getElementById('sqled').value||'');}
+function sqlHL(code){
+  var s=code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  s=s.replace(/(--[^\n]*)/g,'<span class="cm">$1</span>');
+  s=s.replace(/('(?:[^'\\]|\\.)*')/g,'<span class="str">$1</span>');
+  s=s.replace(SQL_FN,function(m){return '<span class="fn">'+m+'</span>';});
+  s=s.replace(SQL_KW,function(m){return '<span class="kw">'+m+'</span>';});
+  s=s.replace(/\b(\d+\.?\d*)\b/g,'<span class="num">$1</span>');
+  return s;
+}
+function clearEditor(){document.getElementById('sqled').value='';doHL();doLN();}
+function formatSQL(){
+  var ta=document.getElementById('sqled'), v=ta.value;
+
+  // ── Step 1: Protect string literals so we never mangle content inside quotes ──
+  var literals=[];
+  v=v.replace(/'(?:[^'\\]|''|\\.)*'/g,function(m){
+    literals.push(m);
+    return '\x00STR'+(literals.length-1)+'\x00';
+  });
+
+  // ── Step 2: Collapse all whitespace / newlines to single spaces ──
+  v=v.replace(/\s+/g,' ').trim();
+
+  // ── Step 3: Keywords that must be on their own line.
+  //   ORDER MATTERS: longer / compound keywords BEFORE their substrings
+  //   e.g. "LEFT JOIN" before "JOIN", "UNION ALL" before "UNION"
+  var lineBreakKws=[
+    'CROSS JOIN','NATURAL JOIN',
+    'LEFT OUTER JOIN','RIGHT OUTER JOIN','FULL OUTER JOIN',
+    'LEFT JOIN','RIGHT JOIN','INNER JOIN','FULL JOIN',
+    'JOIN',
+    'ORDER BY','GROUP BY',
+    'UNION ALL','UNION','INTERSECT','MINUS',
+    'SELECT','FROM','WHERE','HAVING',
+    'CONNECT BY','START WITH',
+    'PIVOT','UNPIVOT',
+    'MERGE INTO','WHEN MATCHED','WHEN NOT MATCHED'
+  ];
+
+  lineBreakKws.forEach(function(k){
+    // Word-boundary aware: require non-word char (or start) on both sides.
+    // Use a capturing group so we can uppercase and preserve spacing.
+    var re=new RegExp('(?<![\\w(])('+k+')(?![\\w])', 'gi');
+    v=v.replace(re, function(_,m){ return '\n'+m.toUpperCase(); });
+  });
+
+  // ── Step 4: AND / OR — only break when NOT inside Oracle (+) join syntax ──
+  // Oracle old-style: col(+) = col  — the "(+)" is never preceded/followed by AND/OR
+  // We break AND/OR only when they are clause-level conjunctions:
+  // i.e. preceded by a non-operator character (closing paren, word, quote placeholder)
+  v=v.replace(/(?<=[\w\x00)])\s+(AND|OR)\s+(?=[\w\x00('])/gi, function(_,kw){
+    return '\n  '+kw.toUpperCase()+' ';
+  });
+
+  // ── Step 5: Split comma lists in SELECT and FROM clauses onto separate lines ──
+  // Handles: SELECT col1, col2  AND  FROM tbl1, tbl2 (Oracle old-style joins)
+  (function(){
+    // Split a string by top-level commas (ignores commas inside parens)
+    function splitTopLevel(str){
+      var parts=[], cur='', d=0;
+      for(var i=0;i<str.length;i++){
+        var c=str[i];
+        if(c==='(') d++;
+        if(c===')') d--;
+        if(c===',' && d===0){ parts.push(cur.trim()); cur=''; }
+        else cur+=c;
+      }
+      if(cur.trim()) parts.push(cur.trim());
+      return parts;
+    }
+
+    var lines=v.split('\n'), out=[];
+    var clause=null; // 'select' | 'from' | null
+
+    lines.forEach(function(line){
+      var trimmed=line.trim();
+
+      // Detect clause changes
+      if(/^SELECT\b/i.test(trimmed))       clause='select';
+      else if(/^FROM\b/i.test(trimmed))    clause='from';
+      else if(/^(WHERE|JOIN|LEFT|RIGHT|INNER|FULL|CROSS|NATURAL|ORDER|GROUP|HAVING|UNION|INTERSECT|MINUS|CONNECT|START|PIVOT|MERGE)\b/i.test(trimmed)) clause=null;
+
+      if(clause==='select'){
+        var kwMatch=trimmed.match(/^(SELECT\s+(?:DISTINCT\s+|ALL\s+)?)/i);
+        var prefix=kwMatch?kwMatch[1]:'';
+        var rest=trimmed.slice(prefix.length);
+        var parts=splitTopLevel(rest);
+        if(parts.length>1){
+          var indent=' '.repeat(prefix.length);
+          out.push(prefix+parts[0]+',');
+			for(var j=1;j<parts.length;j++){
+			  var isLast=(j===parts.length-1);
+			  out.push(indent+parts[j]+(isLast?'':','));
+			}
+          return;
+        }
+      } else if(clause==='from'){
+        var fwMatch=trimmed.match(/^(FROM\s+)/i);
+        var fprefix=fwMatch?fwMatch[1]:'';
+        var frest=trimmed.slice(fprefix.length);
+        var fparts=splitTopLevel(frest);
+        if(fparts.length>1){
+          var findent=' '.repeat(fprefix.length);
+          out.push(fprefix+fparts[0]+',');
+			for(var j=1;j<fparts.length;j++){
+			  var isLast=(j===fparts.length-1);
+			  out.push(findent+fparts[j]+(isLast?'':','));
+			}
+          clause=null; // done splitting FROM list
+          return;
+        }
       }
 
-      try {
-        const check = await pool.query(
-          'SELECT * FROM users WHERE username=$1 OR email=$2',
-          [username, email]
-        );
+      out.push(line);
+    });
+    v=out.join('\n');
+  })();
 
-        if (check.rows.length > 0) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ message: 'User exists' }));
-        }
+  // ── Step 6: Restore string literals ──
+  v=v.replace(/\x00STR(\d+)\x00/g, function(_,i){ return literals[parseInt(i)]; });
 
-        await pool.query(
-          'INSERT INTO users(name, username, email, password) VALUES($1,$2,$3,$4)',
-          [name, username, email, password]
-        );
+  // ── Step 7: Clean up leading/trailing blank lines ──
+  v=v.replace(/^\n+/,'').replace(/\n{3,}/g,'\n\n').trim();
 
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ message: 'Registered' }));
-        log('OK', 'New user registered: ' + username);
+  ta.value=v; doHL(); doLN();
+}
+function changeFontSize(d){fontSize=Math.max(10,Math.min(20,fontSize+d));['sqled','hl','lnums'].forEach(function(id){document.getElementById(id).style.fontSize=fontSize+'px';});}
+function findInSQL(){var q=prompt('Find in SQL:');if(!q)return;var ta=document.getElementById('sqled'),idx=ta.value.toLowerCase().indexOf(q.toLowerCase());if(idx>-1){ta.focus();ta.setSelectionRange(idx,idx+q.length);}else alert('"'+q+'" not found.');}
 
-      } catch (err) {
-        console.error(err);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ message: 'DB error' }));
+/* ══════════ STATUS ══════════ */
+function setStatus(state,label){document.getElementById('sdot').className='sdot'+(state?' '+state:'');document.getElementById('sconn').textContent=label||'Not connected';}
+function setLoading(on){
+  setLoading._active=!!on;
+  document.getElementById('spinner').style.display=on?'inline-block':'none';
+  if(on)document.getElementById('sdot').className='sdot busy';
+}
+function setStage(msg){
+  document.getElementById('res-info').textContent = msg;   // top bar
+}
+function openHelp(){document.getElementById('help-overlay').classList.add('show');}
+
+/* ══════════════════════════════════════════
+   BIND VARIABLES
+   Detects :param_name in SQL, shows modal,
+   substitutes values, then runs.
+══════════════════════════════════════════ */
+var _bvPendingSQL = '';
+var _bvParams = [];
+
+function detectBindVars(sql) {
+  // Match :word — skip ::cast (postgres-style) just in case
+  var re = /(?<![:])\:([A-Za-z_][A-Za-z0-9_]*)/g;
+  var seen = new Set(), params = [];
+  var m;
+  while ((m = re.exec(sql)) !== null) {
+    if (!seen.has(m[1].toUpperCase())) {
+      seen.add(m[1].toUpperCase());
+      params.push(m[1]);
+    }
+  }
+  return params;
+}
+
+function openBindVarsModal(sql, params) {
+  _bvPendingSQL = sql;
+  _bvParams = params;
+
+  var subtitle = document.getElementById('bv-subtitle');
+  subtitle.textContent = params.length + ' variable' + (params.length !== 1 ? 's' : '') + ' detected';
+
+  var body = document.getElementById('bv-body');
+  var html = '';
+  params.forEach(function(p) {
+    html += '<div class="bv-field" style="display:flex;flex-direction:column;gap:4px;">'
+      + '<label>:' + esc(p) + '</label>'
+      + '<div style="display:flex;gap:6px;align-items:center;">'
+      + '<input type="text" id="bv-input-' + esc(p) + '" autocomplete="off" spellcheck="false" placeholder="Enter value…" style="flex:1;"/>'
+      + '<select id="bv-type-' + esc(p) + '" title="Data type" style="padding:3px 6px;border:1px solid #374151;border-radius:3px;background:#0f172a;color:#e5e7eb;font-size:11px;cursor:pointer;outline:none;">'
+      + '<option value="string" selected>VARCHAR</option>'
+      + '<option value="number">NUMBER</option>'
+      + '<option value="date">DATE</option>'
+      + '</select>'
+      + '</div>'
+      + '</div>';
+  });
+  body.innerHTML = html;
+
+  document.getElementById('bv-overlay').classList.add('show');
+  var first = body.querySelector('input');
+  if (first) setTimeout(function() { first.focus(); }, 80);
+
+  var inputs = body.querySelectorAll('input');
+  inputs.forEach(function(inp, idx) {
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (idx < inputs.length - 1) inputs[idx + 1].focus();
+        else bvSubmit();
       }
     });
+  });
+}
+
+function bvCancel() {
+  document.getElementById('bv-overlay').classList.remove('show');
+  _bvPendingSQL = '';
+  _bvParams = [];
+  running = false;
+  setLoading(false);
+  setStage('Cancelled');
+  setTimeout(function(){ setStage(''); }, 1500);
+}
+
+function bvSubmit() {
+  var sql = _bvPendingSQL;
+  _bvParams.forEach(function(p) {
+    var el    = document.getElementById('bv-input-' + p);
+    var tsel  = document.getElementById('bv-type-' + p);
+    var val   = el ? el.value : '';
+    var dtype = tsel ? tsel.value : 'string';
+    var re    = new RegExp('(?<![:])\:' + p + '(?![A-Za-z0-9_])', 'gi');
+
+    var replacement;
+    if (dtype === 'number') {
+      // Numeric — no quotes; fallback to 0 if invalid
+      replacement = /^-?\d+(\.\d+)?$/.test(val.trim()) ? val.trim() : '0';
+    } else if (dtype === 'date') {
+      // DATE — wrap in TO_DATE for Oracle; adjust format if needed
+      replacement = "TO_DATE('" + val.replace(/'/g, "''") + "','YYYY-MM-DD')";
+    } else {
+      // STRING / VARCHAR — always wrap in single quotes (safe default)
+      replacement = "'" + val.replace(/'/g, "''") + "'";
+    }
+
+    sql = sql.replace(re, replacement);
+  });
+  document.getElementById('bv-overlay').classList.remove('show');
+  _bvPendingSQL = '';
+  _bvParams = [];
+  _executeSQL(sql);
+}
+
+/* ══════════════════════════════════════════
+   GO TO COLUMN PANEL
+══════════════════════════════════════════ */
+var gtcOpen = false;
+
+function toggleGtcPanel() {
+  gtcOpen = !gtcOpen;
+  var panel = document.getElementById('gtc-panel');
+  panel.style.display = gtcOpen ? 'flex' : 'none';
+  if (gtcOpen) {
+    buildGtcList('');
+    setTimeout(function() { document.getElementById('gtc-search').focus(); }, 60);
   }
+}
 
-  // ── LOGIN ─────────────────────────────────────────────────────
-  if (req.url === '/login' && req.method === 'POST') {
-    return getBody(req, async data => {
-      const { identifier, password } = data;
-
-      if (!identifier || !password) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ message: 'Missing fields' }));
-      }
-
-      try {
-        const result = await pool.query(
-          'SELECT * FROM users WHERE (username=$1 OR email=$1) AND password=$2',
-          [identifier, password]
-        );
-
-        if (result.rows.length === 0) {
-          res.writeHead(401, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ message: 'Invalid credentials' }));
-        }
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          message: 'Login success',
-          user: result.rows[0]
-        }));
-        log('OK', 'Login: ' + identifier);
-
-      } catch (err) {
-        console.error(err);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ message: 'DB error' }));
-      }
-    });
-  }
-
-  // ── CONNECTIONS ───────────────────────────────────────────────
-
-  // POST /connections — save a new connection
-  if (req.url === '/connections' && req.method === 'POST') {
-    return getBody(req, async data => {
-      const { user_id, name, type, host, port, database_name, username, password } = data;
-
-      if (!user_id || !name || !type) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ message: 'Missing required fields: user_id, name, type' }));
-      }
-
-      try {
-        const result = await pool.query(
-          `INSERT INTO connections (user_id, name, type, host, port, database_name, username, password)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-          [user_id, name, type, host || null, port || null, database_name || null, username || null, password || null]
-        );
-
-        res.writeHead(201, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ message: 'Connection saved', connection: result.rows[0] }));
-        log('OK', 'Connection saved: ' + name + ' for user ' + user_id);
-
-      } catch (err) {
-        console.error(err);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ message: 'DB error' }));
-      }
-    });
-  }
-
-  // GET /connections?user_id=X — fetch all connections for a user
-  if (req.url.startsWith('/connections') && req.method === 'GET') {
-    return (async () => {
-      const parsedUrl = url.parse(req.url, true);
-      const user_id = parsedUrl.query.user_id;
-
-      if (!user_id) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ message: 'Missing user_id query param' }));
-      }
-
-      try {
-        const result = await pool.query(
-          'SELECT * FROM connections WHERE user_id=$1 ORDER BY created_at ASC',
-          [user_id]
-        );
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ connections: result.rows }));
-        log('OK', 'Fetched ' + result.rows.length + ' connections for user ' + user_id);
-
-      } catch (err) {
-        console.error(err);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ message: 'DB error' }));
-      }
-    })();
-  }
-
-  // DELETE /connections/:id - remove a connection
-  var deleteMatch = req.url.match(/^\/connections\/(\d+)$/);
-  if (deleteMatch && req.method === 'DELETE') {
-    var connId = parseInt(deleteMatch[1], 10);
-    return (async () => {
-      try {
-        const result = await pool.query('DELETE FROM connections WHERE id=$1 RETURNING id', [connId]);
-
-        if (result.rows.length === 0) {
-          res.writeHead(404, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ message: 'Connection not found' }));
-        }
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ message: 'Connection deleted' }));
-        log('OK', 'Deleted connection id=' + connId);
-
-      } catch (err) {
-        console.error(err);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ message: 'DB error' }));
-      }
-    })();
-  }
-
-  // ── PROXY (pass-through for everything else) ─────────────────
-  var targetUrl = req.headers['x-target-url'];
-
-  if (!targetUrl) {
-    res.writeHead(400, { 'Content-Type': 'text/plain' });
-    res.end('Missing X-Target-URL header.');
+function buildGtcList(filter) {
+  var list = document.getElementById('gtc-list');
+  var cols = resultCols;
+  var q = filter.toLowerCase();
+  var filtered = q ? cols.filter(function(c) { return c.toLowerCase().includes(q); }) : cols;
+  if (!filtered.length) {
+    list.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:#6b7280;">No columns</div>';
     return;
   }
+  list.innerHTML = filtered.map(function(c) {
+    return '<div class="gtc-item" onclick="gtcScrollTo(\'' + escJ(c) + '\')" title="' + esc(c) + '">' + esc(c) + '</div>';
+  }).join('');
+}
 
-  var parsed;
-  try {
-    parsed = url.parse(targetUrl);
-  } catch(e) {
-    res.writeHead(400, { 'Content-Type': 'text/plain' });
-    res.end('Invalid URL: ' + targetUrl);
-    return;
-  }
+function gtcFilter(q) {
+  buildGtcList(q);
+}
 
-  var fwdHeaders = {};
-  Object.keys(req.headers).forEach(function(k) {
-    if (k !== 'x-target-url' && k !== 'host' && k !== 'origin' && k !== 'referer') {
-      fwdHeaders[k] = req.headers[k];
+function gtcScrollTo(colName) {
+  // Find column index
+  var idx = resultCols.indexOf(colName);
+  if (idx === -1) return;
+  var table = document.querySelector('#rarea table');
+  if (!table) return;
+  var th = table.querySelectorAll('thead th')[idx + 1]; // +1 for row-num col
+  if (!th) th = table.querySelectorAll('thead th')[idx];
+  if (!th) return;
+  // Scroll the tbl-wrap horizontally to show that th
+  var wrap = document.getElementById('rarea');
+  wrap.scrollLeft = th.offsetLeft - wrap.offsetLeft - 8;
+  // Briefly highlight
+  document.querySelectorAll('.gtc-item').forEach(function(el) { el.classList.remove('hl'); });
+  // Highlight matching item
+  document.querySelectorAll('.gtc-item').forEach(function(el) {
+    if (el.textContent === colName) el.classList.add('hl');
+  });
+}
+
+/* ══════════════════════════════════════════
+   SEARCH IN RESULT
+══════════════════════════════════════════ */
+var _sirMatches = [], _sirIdx = -1;
+
+function sirSearch(q) {
+  // Clear previous highlights
+  document.querySelectorAll('#rarea td.sir-hl').forEach(function(td) { td.classList.remove('sir-hl', 'sir-hl-cur'); });
+  _sirMatches = []; _sirIdx = -1;
+  document.getElementById('sir-count').textContent = '';
+  if (!q.trim()) return;
+  var lq = q.toLowerCase();
+  var cells = document.querySelectorAll('#rarea tbody td:not(.rn-col)');
+  cells.forEach(function(td) {
+    if (td.textContent.toLowerCase().includes(lq)) {
+      td.classList.add('sir-hl');
+      _sirMatches.push(td);
     }
   });
-  fwdHeaders['host'] = parsed.hostname;
+  if (_sirMatches.length) {
+    _sirIdx = 0;
+    _sirMatches[0].classList.add('sir-hl-cur');
+    _sirMatches[0].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    document.getElementById('sir-count').textContent = '1 / ' + _sirMatches.length;
+  } else {
+    document.getElementById('sir-count').textContent = '0 results';
+  }
+}
 
-  var options = {
-    hostname : parsed.hostname,
-    port     : parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
-    path     : parsed.path || '/',
-    method   : req.method,
-    headers  : fwdHeaders,
-    rejectUnauthorized: false
+function sirKeyNav(e) {
+  if (!_sirMatches.length) return;
+  if (e.key === 'Enter' || e.key === 'F3') {
+    e.preventDefault();
+    _sirMatches[_sirIdx].classList.remove('sir-hl-cur');
+    _sirIdx = e.shiftKey ? (_sirIdx - 1 + _sirMatches.length) % _sirMatches.length : (_sirIdx + 1) % _sirMatches.length;
+    _sirMatches[_sirIdx].classList.add('sir-hl-cur');
+    _sirMatches[_sirIdx].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    document.getElementById('sir-count').textContent = (_sirIdx + 1) + ' / ' + _sirMatches.length;
+  }
+}
+
+/* ══════════════════════════════════════════
+   INJECT sir-hl styles dynamically
+══════════════════════════════════════════ */
+(function() {
+  var s = document.createElement('style');
+  s.textContent = 'td.sir-hl{background:#7c3aed33 !important;}td.sir-hl-cur{background:#7c3aed99 !important;outline:2px solid #a78bfa;}';
+  document.head.appendChild(s);
+})();
+
+/* ══════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════ */
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// Escape for JS string inside single-quote onclick attribute
+function escJ(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'').replace(/\n/g,'');}
+
+/* ══════════════════════════════════════════
+   AUTOCOMPLETE ENGINE
+══════════════════════════════════════════ */
+(function(){
+  var dropdown, selIdx = -1, acItems = [], acWord = '', acWordStart = 0;
+
+  var KW_LIST = [
+    'SELECT','FROM','WHERE','AND','OR','NOT','IN','EXISTS','BETWEEN','LIKE','IS','NULL',
+    'JOIN','LEFT JOIN','RIGHT JOIN','INNER JOIN','OUTER JOIN','FULL JOIN','CROSS JOIN',
+    'ON','GROUP BY','ORDER BY','HAVING','UNION','UNION ALL','DISTINCT','AS','LIMIT',
+    'OFFSET','INSERT INTO','VALUES','UPDATE','SET','DELETE FROM','CREATE TABLE',
+    'DROP TABLE','ALTER TABLE','ADD COLUMN','WITH','CASE','WHEN','THEN','ELSE','END',
+    'ROWNUM','FETCH NEXT','ROWS ONLY','CONNECT BY','PRIOR','LEVEL','PIVOT','MERGE',
+    'USING','MATCHED','ASC','DESC','COMMIT','ROLLBACK','TRUNCATE','DUAL','SYSDATE',
+    'SYSTIMESTAMP','BEGIN','DECLARE','RETURN'
+  ];
+  var FN_LIST = [
+    'COUNT(','SUM(','AVG(','MAX(','MIN(','COALESCE(','NVL(','NVL2(','DECODE(',
+    'TRIM(','LTRIM(','RTRIM(','UPPER(','LOWER(','SUBSTR(','INSTR(','LENGTH(',
+    'TO_DATE(','TO_CHAR(','TO_NUMBER(','TO_TIMESTAMP(','TRUNC(','ROUND(','FLOOR(',
+    'CEIL(','MOD(','ABS(','SIGN(','POWER(','SQRT(','CONCAT(','REPLACE(','TRANSLATE(',
+    'LPAD(','RPAD(','RANK(','DENSE_RANK(','ROW_NUMBER(','LEAD(','LAG(','OVER(',
+    'PARTITION BY','LISTAGG(','EXTRACT(','MONTHS_BETWEEN(','ADD_MONTHS(','LAST_DAY(',
+    'NEXT_DAY(','CAST(','NULLIF(','GREATEST(','LEAST(','REGEXP_LIKE(','REGEXP_SUBSTR(',
+    'REGEXP_REPLACE(','SYS_GUID(','WM_CONCAT('
+  ];
+
+  function init(){
+    dropdown = document.createElement('div');
+    dropdown.id = 'ac-dropdown';
+    document.body.appendChild(dropdown);
+
+    var ta = document.getElementById('sqled');
+    ta.addEventListener('input', onInput);
+    ta.addEventListener('keydown', onKeyDown, true); // capture so we intercept before handleKeys
+    ta.addEventListener('blur', function(){ setTimeout(hide, 150); });
+    document.addEventListener('mousedown', function(e){
+      if(e.target.closest('#ac-dropdown')) return;
+      hide();
+    });
+  }
+
+  /* ── Get word being typed ── */
+  function getWordAtCursor(ta){
+    var pos = ta.selectionStart, val = ta.value;
+    var start = pos;
+    // Walk back through word chars (letters, digits, _, $, .)
+    while(start > 0 && /[\w$.]/.test(val[start-1])) start--;
+    return { word: val.slice(start, pos), start: start, end: pos };
+  }
+
+  /* ── Detect SQL context before cursor ── */
+  function getContext(val, cursorPos){
+    var before = val.slice(0, cursorPos).toUpperCase().replace(/\s+/g,' ');
+    // What keyword was most recently used?
+    var ctxKws = ['SELECT','FROM','WHERE','SET','ON','HAVING','GROUP BY','ORDER BY',
+                  'JOIN','LEFT JOIN','RIGHT JOIN','INNER JOIN','OUTER JOIN','VALUES','INTO'];
+    var lastKw = '', lastIdx = -1;
+    ctxKws.forEach(function(k){
+      var idx = before.lastIndexOf(k);
+      if(idx > lastIdx){ lastIdx = idx; lastKw = k; }
+    });
+
+    // Tables already referenced in the query (after FROM / JOIN keywords)
+    var tables = [];
+    var tblRe = /(?:FROM|JOIN)\s+([A-Z0-9_$#]+)/gi;
+    var m;
+    while((m = tblRe.exec(val)) !== null){
+      tables.push(m[1].toUpperCase());
+    }
+    return { lastKw: lastKw, tables: tables };
+  }
+
+  /* ── Build suggestion list ── */
+  function getSuggestions(word, val, cursorPos){
+    if(word.length < 1) return [];
+    var wu = word.toUpperCase();
+    var ctx = getContext(val, cursorPos);
+    var results = [];
+
+    // 1. Table suggestions — after FROM / JOIN
+    if(['FROM','JOIN','LEFT JOIN','RIGHT JOIN','INNER JOIN','OUTER JOIN'].indexOf(ctx.lastKw) > -1){
+      Object.keys(acMeta).forEach(function(t){
+        if(t.toUpperCase().startsWith(wu)) results.push({label:t, type:'tbl'});
+      });
+    }
+
+    // 2. Column suggestions — after SELECT / WHERE / SET / ON / HAVING / ORDER BY / GROUP BY
+    var colCtx = ['SELECT','WHERE','SET','ON','HAVING','GROUP BY','ORDER BY'];
+    if(colCtx.indexOf(ctx.lastKw) > -1){
+      // Columns from tables already mentioned in query
+      var colsSeen = new Set();
+      ctx.tables.forEach(function(t){
+        var cols = acMeta[t] || acMeta[t.toUpperCase()] || [];
+        cols.forEach(function(c){
+          if(c.toUpperCase().startsWith(wu) && !colsSeen.has(c)){
+            colsSeen.add(c);
+            results.push({label:c, type:'col', table:t});
+          }
+        });
+      });
+      // If no tables resolved yet, show all columns matching
+      if(!ctx.tables.length){
+        var allSeen = new Set();
+        Object.keys(acMeta).forEach(function(t){
+          (acMeta[t]||[]).forEach(function(c){
+            if(c.toUpperCase().startsWith(wu) && !allSeen.has(c)){
+              allSeen.add(c);
+              results.push({label:c, type:'col', table:t});
+            }
+          });
+        });
+      }
+    }
+
+    // 3. SQL Functions
+    FN_LIST.forEach(function(f){
+      if(f.toUpperCase().startsWith(wu)) results.push({label:f, type:'fn'});
+    });
+
+    // 4. Keywords (always available)
+    KW_LIST.forEach(function(k){
+      if(k.toUpperCase().startsWith(wu)) results.push({label:k, type:'kw'});
+    });
+
+    // Deduplicate and limit
+    var seen = new Set(), final = [];
+    results.forEach(function(r){
+      var key = r.type+':'+r.label;
+      if(!seen.has(key)){ seen.add(key); final.push(r); }
+    });
+    return final.slice(0, 30);
+  }
+
+  /* ── Position dropdown under cursor ── */
+  function getCaretCoords(ta){
+    var div = document.createElement('div');
+    var style = window.getComputedStyle(ta);
+    ['fontFamily','fontSize','fontWeight','lineHeight','letterSpacing',
+     'padding','paddingTop','paddingLeft','paddingRight','paddingBottom',
+     'border','borderTop','borderLeft','wordWrap','whiteSpace','width'].forEach(function(p){
+      div.style[p] = style[p];
+    });
+    div.style.position = 'absolute';
+    div.style.visibility = 'hidden';
+    div.style.whiteSpace = 'pre-wrap';
+    div.style.wordBreak = 'break-word';
+    div.style.top = '-9999px';
+    div.style.left = '-9999px';
+    document.body.appendChild(div);
+
+    var before = ta.value.slice(0, ta.selectionStart);
+    div.textContent = before;
+    var span = document.createElement('span');
+    span.textContent = '|';
+    div.appendChild(span);
+
+    var taRect = ta.getBoundingClientRect();
+    var spanRect = span.getBoundingClientRect();
+    var divRect = div.getBoundingClientRect();
+
+    document.body.removeChild(div);
+
+    // Account for textarea scroll
+    var x = taRect.left + (spanRect.left - divRect.left) - ta.scrollLeft;
+    var y = taRect.top  + (spanRect.top  - divRect.top)  - ta.scrollTop;
+    return { x: x, y: y };
+  }
+
+  function show(items, ta){
+    if(!items.length){ hide(); return; }
+    acItems = items;
+    selIdx = -1;
+
+    var html = items.map(function(item, i){
+      var badge = '<span class="ac-badge '+item.type+'">'
+        + (item.type==='tbl'?'TABLE':item.type==='col'?'COL':item.type==='fn'?'FN':'KW')
+        + '</span>';
+      var label = esc(item.label);
+      if(acWord){
+        var re = new RegExp('^('+acWord.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','i');
+        label = label.replace(re,'<span class="ac-match">$1</span>');
+      }
+      return '<div class="ac-item" data-idx="'+i+'" onmousedown="event.preventDefault()" onclick="_acPick('+i+')">'+badge+' '+label+'</div>';
+    }).join('');
+    dropdown.innerHTML = html;
+    dropdown.style.display = 'block';
+
+    // Position
+    var coords = getCaretCoords(ta);
+    var lineH = parseInt(window.getComputedStyle(ta).lineHeight) || 20;
+    var top = coords.y + lineH + 4;
+    var left = coords.x;
+
+    // Clamp to viewport
+    if(left + 240 > window.innerWidth) left = window.innerWidth - 244;
+    if(top + 220 > window.innerHeight) top = coords.y - 224;
+    dropdown.style.top  = top + 'px';
+    dropdown.style.left = left + 'px';
+  }
+
+  function hide(){ dropdown.style.display='none'; selIdx=-1; acItems=[]; }
+
+  function highlight(idx){
+    dropdown.querySelectorAll('.ac-item').forEach(function(el,i){
+      el.classList.toggle('ac-sel', i===idx);
+    });
+    var sel = dropdown.querySelectorAll('.ac-item')[idx];
+    if(sel) sel.scrollIntoView({block:'nearest'});
+  }
+
+  /* ── Accept suggestion ── */
+  window._acPick = function(idx){
+    var item = acItems[idx];
+    if(!item) return;
+    var ta = document.getElementById('sqled');
+    var val = ta.value;
+    var insert = item.label;
+    ta.value = val.slice(0, acWordStart) + insert + val.slice(acWordStart + acWord.length);
+    var newPos = acWordStart + insert.length;
+    ta.selectionStart = ta.selectionEnd = newPos;
+    ta.focus();
+    hide();
+    doHL(); doLN();
   };
 
-  log('REQ', req.method + ' → ' + parsed.hostname + options.path);
+  function onInput(){
+    var ta = document.getElementById('sqled');
+    var w = getWordAtCursor(ta);
+    acWord = w.word;
+    acWordStart = w.start;
+    if(!acWord){ hide(); return; }
+    var items = getSuggestions(acWord, ta.value, ta.selectionStart);
+    show(items, ta);
+  }
 
-  var protocol = parsed.protocol === 'https:' ? https : http;
-
-  var proxyReq = protocol.request(options, function(proxyRes) {
-    var skip = ['transfer-encoding','connection','keep-alive','proxy-authenticate','proxy-authorization','te','trailers','upgrade'];
-    var outHeaders = {};
-    Object.keys(proxyRes.headers).forEach(function(k) {
-      if (skip.indexOf(k) === -1) outHeaders[k] = proxyRes.headers[k];
-    });
-
-    outHeaders['Access-Control-Allow-Origin']  = '*';
-    outHeaders['Access-Control-Expose-Headers']= '*';
-
-    res.writeHead(proxyRes.statusCode, outHeaders);
-    proxyRes.pipe(res, { end:true });
-    log('OK', 'Response ' + proxyRes.statusCode + ' from ' + parsed.hostname);
-  });
-
-  proxyReq.on('error', function(e) {
-    log('ERR', e.message);
-    if (!res.headersSent) {
-      res.writeHead(502, { 'Content-Type': 'text/plain' });
+  function onKeyDown(e){
+    if(dropdown.style.display === 'none') return;
+    if(e.key === 'ArrowDown'){
+      e.preventDefault(); e.stopPropagation();
+      selIdx = (selIdx + 1) % acItems.length;
+      highlight(selIdx); return;
     }
-    res.end('Proxy error: ' + e.message);
-  });
+    if(e.key === 'ArrowUp'){
+      e.preventDefault(); e.stopPropagation();
+      selIdx = (selIdx - 1 + acItems.length) % acItems.length;
+      highlight(selIdx); return;
+    }
+    if(e.key === 'Enter' || e.key === 'Tab'){
+      if(selIdx > -1){
+        e.preventDefault(); e.stopPropagation();
+        _acPick(selIdx); return;
+      }
+      hide(); return;
+    }
+    if(e.key === 'Escape'){ e.preventDefault(); hide(); return; }
+  }
 
-  req.pipe(proxyReq, { end:true });
-});
+  /* ── Init on DOM ready ── */
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
 
-server.listen(PORT, '0.0.0.0', function() {
-  console.log(`Proxy running on port ${PORT}`);
-});
+/* ══════════════════════════════════════════
+   LOAD METADATA (Tables + Columns)
+   Call this after connecting, or manually.
+   Uses ALL_TAB_COLUMNS via your existing SQL engine.
+══════════════════════════════════════════ */
+function loadMetadata(){
+  if(!activeConn){ alert('Select a connection first.'); return; }
+  setMetaStatus('loading', '⏳ Loading metadata…');
+  var sql = "SELECT TABLE_NAME, COLUMN_NAME FROM ALL_TAB_COLUMNS WHERE OWNER = SYS_CONTEXT('USERENV','CURRENT_SCHEMA') ORDER BY TABLE_NAME, COLUMN_ID";
+  var auth = basicAuth(activeConn), conn = activeConn;
+  soapCall(conn.url+'/xmlpserver/services/ExternalReportWSSService', buildRunReportSOAP(conn, sql), auth)
+    .then(function(resp){ return resp.text(); })
+    .then(function(xml){
+      var p = parseCSVResponse(xml);
+      if(p.error || !p.rows.length){ setMetaStatus('failed', '⚠ Metadata: no data — click ⚡ Meta to retry'); return; }
+      acMeta = {};
+      p.rows.forEach(function(r){
+        var t = (r['TABLE_NAME']||r['table_name']||'').trim();
+        var c = (r['COLUMN_NAME']||r['column_name']||'').trim();
+        if(t && c){
+          if(!acMeta[t]) acMeta[t] = [];
+          acMeta[t].push(c);
+        }
+      });
+      acMetaLoaded = true;
+      var tCount = Object.keys(acMeta).length;
+      setMetaStatus('ok', '⚡ Metadata: '+tCount+' tables loaded');
+    })
+    .catch(function(){ setMetaStatus('failed', '⚠ Metadata failed — click ⚡ Meta to retry'); });
+}
+
+function setMetaStatus(state, msg){
+  var el = document.getElementById('meta-status');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color   = state==='ok' ? '#4ade80' : state==='failed' ? '#f87171' : '#fbbf24';
+  el.style.display = 'inline';
+}
+
+</script>
+</body>
+</html>
