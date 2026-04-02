@@ -1062,7 +1062,7 @@ function checkProxy(cb){
 
   // Show "checking" state visually while we wait
   var el=document.getElementById('proxy-badge');
-  if(el){el.textContent='⏳ Checking proxy…';el.style.color='#92400e';el.style.background='#fef3c7';}
+  if(el){el.textContent='⏳ Checking for Active Server…';el.style.color='#92400e';el.style.background='#fef3c7';}
 
   // Render.com free tier cold-starts can take 15-30s — use a long timeout
   fetch(PROXY_URL,{method:'OPTIONS',signal:AbortSignal.timeout(20000)})
