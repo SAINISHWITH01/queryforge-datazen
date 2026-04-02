@@ -1456,7 +1456,7 @@ function exportCSV(){
 }
 
 function showErr(msg){document.getElementById('rarea').innerHTML='<div class="errdata">⚠ '+esc(msg)+'</div>';document.getElementById('res-info').textContent='Error';document.getElementById('srows').textContent='';document.getElementById('stime').textContent='';}
-function clearResults(){document.getElementById('rarea').innerHTML='<div class="nodata" style="color:#1565c0">⏳ Running query…</div>';document.getElementById('res-info').textContent='Running…';document.getElementById('srows').textContent='';document.getElementById('stime').textContent='';}
+function clearResults(){document.getElementById('rarea').innerHTML='';document.getElementById('res-info').textContent='Running…';document.getElementById('srows').textContent='';document.getElementById('stime').textContent='';}
 
 /* ══════════ RESIZER ══════════ */
 function initResizer(){
@@ -1613,7 +1613,9 @@ function setLoading(on){
   document.getElementById('spinner').style.display=on?'inline-block':'none';
   if(on)document.getElementById('sdot').className='sdot busy';
 }
-function setStage(msg){document.getElementById('sstage').textContent=msg;}
+function setStage(msg){
+  document.getElementById('res-info').textContent = msg;   // top bar
+}
 function openHelp(){document.getElementById('help-overlay').classList.add('show');}
 
 /* ══════════════════════════════════════════
