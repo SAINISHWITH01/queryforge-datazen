@@ -16,6 +16,68 @@ function log(level, msg) {
 // ── Create the proxy server ──
 var server = http.createServer(function(req, res) {
 
+  // ── SIMPLE USER STORAGE ──
+if (!global.users) global.users = [];
+
+// Parse body
+function getBody(req, callback) {
+  let body = '';
+  req.on('data', chunk => body += chunk);
+  req.on('end', () => {
+    try {
+      callback(JSON.parse(body));
+    } catch {
+      callback({});
+    }
+  });
+}
+
+// ── REGISTER ──
+if (req.url === '/register' && req.method === 'POST') {
+  return getBody(req, data => {
+    const { name, username, email, password } = data;
+
+    if (!name || !username || !email || !password) {
+      res.writeHead(400);
+      return res.end(JSON.stringify({ message: 'All fields required' }));
+    }
+
+    const exists = global.users.find(u =>
+      u.username === username || u.email === email
+    );
+
+    if (exists) {
+      res.writeHead(400);
+      return res.end(JSON.stringify({ message: 'User exists' }));
+    }
+
+    global.users.push({ name, username, email, password });
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ message: 'Registered' }));
+  });
+}
+
+// ── LOGIN ──
+if (req.url === '/login' && req.method === 'POST') {
+  return getBody(req, data => {
+    const { identifier, password } = data;
+
+    const user = global.users.find(u =>
+      (u.username === identifier || u.email === identifier) &&
+      u.password === password
+    );
+
+    if (!user) {
+      res.writeHead(401);
+      return res.end(JSON.stringify({ message: 'Invalid credentials' }));
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ message: 'Login success', user }));
+  });
+}
+  
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.setHeader('Access-Control-Allow-Headers', '*');
