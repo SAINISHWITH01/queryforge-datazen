@@ -733,15 +733,33 @@ thead .rn-col{background:#1e293b !important;color:#6b7280;font-weight:600 !impor
       <div class="mtab" onclick="switchMTab('howto')">How it Works</div>
     </div>
     <div class="mtab-panel on" id="panel-new">
-      <div class="mf"><label>Connection Name</label><input type="text" id="mc-name" placeholder="e.g. KUFPEC HCM Production"/></div>
-      <div class="mf"><label>Oracle Fusion URL</label><input type="url" id="mc-url" placeholder="https://iabhbn-dev1.fa.ocs.oraclecloud.com"/></div>
-      <div class="mf"><label>Username</label><input type="text" id="mc-user" placeholder="KUF_HCM_REPORT"/></div>
-      <div class="mf"><label>Password</label><input type="password" id="mc-pass" placeholder="••••••••"/></div>
       <div class="mf">
+		<label>Connection Name</label>
+		<!-- <input type="text" id="mc-name" placeholder="e.g. KUFPEC HCM Production"/> -->
+		<input type="text" id="mc-name" autocomplete="off">
+	  </div>
+      <div class="mf">
+		<label>Oracle Fusion URL</label>
+		<!-- <input type="url" id="mc-url" placeholder="https://iabhbn-dev1.fa.ocs.oraclecloud.com"/> -->
+		<input type="url" id="mc-url" autocomplete="off">
+	  </div>
+      <div class="mf">
+		<label>Username</label>
+		<!-- <input type="text" id="mc-user" placeholder="KUF_HCM_REPORT"/> -->
+		<input type="text" id="mc-user" autocomplete="off">
+	   </div>
+      <div class="mf">
+		<label>Password</label>
+		<!-- <input type="password" id="mc-pass" placeholder="••••••••"/> -->
+		<input type="password" id="mc-pass" autocomplete="off">
+	  </div>
+      <!--<div class="mf">
         <label>Report Path</label>
         <input type="text" id="mc-path" value="/Custom/CloudSQL/CloudSQLReport_csv.xdo"/>
-        <div class="info-chip">📌 <b>Report must already exist</b> at <b>/Custom/CloudSQL/CloudSQLReport_csv.xdo</b></div>
-      </div>
+        <div class="info-chip">📌 
+			<b>Report must already exist</b> at <b>/Custom/CloudSQL/CloudSQLReport_csv.xdo</b>
+		</div>
+      </div>-->
       <div class="mstatus" id="mc-status"></div>
     </div>
     <div class="mtab-panel" id="panel-saved"><div id="saved-list"><div style="color:#888;font-size:12px;padding:8px 0;">No connections saved yet.</div></div></div>
