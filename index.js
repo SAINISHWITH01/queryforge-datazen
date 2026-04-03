@@ -255,10 +255,6 @@ var server = http.createServer(function(req, res) {
         return res.end(JSON.stringify({ ok: false, message: 'Missing fusionUrl, username, or password' }));
       }
 
-      var CATALOG_B64 = "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";
-
-      var catalogBuf = Buffer.from(CATALOG_B64, 'base64');
-
       var parsedFusion;
       try {
         parsedFusion = url.parse(fusionUrl);
@@ -266,8 +262,6 @@ var server = http.createServer(function(req, res) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({ ok: false, message: 'Invalid Fusion URL: ' + e.message }));
       }
-
-      var basicAuth = 'Basic ' + Buffer.from(username + ':' + password).toString('base64');
 
       // Helper: do one HTTP/S request and return { status, headers, body }
       function doRequest(parsedUrl, method, headers, body) {
@@ -304,12 +298,11 @@ var server = http.createServer(function(req, res) {
         });
       }
 
-   var uploadPath = '/Shared Folders/Custom/';
       var lastStatus = 0;
       var lastBody   = '';
       var uploaded   = false;
 
-      // Step 1: Login to get session token via SAWSessionService
+      // Step 1: Login to get session token
       var loginSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
         '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
         '<soapenv:Body>' +
@@ -323,12 +316,11 @@ var server = http.createServer(function(req, res) {
       var sessionID = '';
       try {
         var loginBuf    = Buffer.from(loginSoap, 'utf8');
-       // var loginParsed = url.parse(fusionUrl + '/analytics/saw.dll?SoapImpl=nQSessionService');
         var loginParsed = url.parse(fusionUrl + '/analytics-ws/saw.dll?SoapImpl=nQSessionService');
         var loginResult = await doRequest(loginParsed, 'POST', {
           'Content-Type'   : 'text/xml; charset=UTF-8',
           'Content-Length' : loginBuf.length,
-          'SOAPAction'     : 'unarchive',
+          'SOAPAction'     : 'logon',
           'Accept-Encoding': 'identity'
         }, loginBuf);
         log('REQ', 'Login status: ' + loginResult.status);
@@ -344,55 +336,52 @@ var server = http.createServer(function(req, res) {
         log('ERR', 'Login failed: ' + e.message);
       }
 
-      // Step 2: Use session to unarchive catalog
+      // Step 2: Create folder /Shared Folders/Custom
       if (sessionID) {
-        log('REQ', 'Upload path: ' + uploadPath);
-       var createFolderSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
-  '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
-  '<soapenv:Body>' +
-  '<saw:createFolder>' +
-         '<saw:path>/Shared Folders/Custom</saw:path>' +
-'<saw:createIfNotExists>true</saw:createIfNotExists>' +
-  '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
-  '</saw:createFolder>' +
-  '</soapenv:Body>' +
-  '</soapenv:Envelope>';
+        var createFolderSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
+          '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
+          '<soapenv:Body>' +
+          '<saw:createFolder>' +
+          '<saw:path>/Shared Folders/Custom</saw:path>' +
+          '<saw:createIfNotExists>true</saw:createIfNotExists>' +
+          '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
+          '</saw:createFolder>' +
+          '</soapenv:Body>' +
+          '</soapenv:Envelope>';
 
         try {
-         var unarchiveBuf    = Buffer.from(createFolderSoap, 'utf8');
-          var unarchiveParsed = url.parse(fusionUrl + '/analytics-ws/saw.dll?SoapImpl=webCatalogService');
-          var result = await doRequest(unarchiveParsed, 'POST', {
+          var folderBuf    = Buffer.from(createFolderSoap, 'utf8');
+          var folderParsed = url.parse(fusionUrl + '/analytics-ws/saw.dll?SoapImpl=webCatalogService');
+          var result = await doRequest(folderParsed, 'POST', {
             'Content-Type'   : 'text/xml; charset=UTF-8',
-            'Content-Length' : unarchiveBuf.length,
+            'Content-Length' : folderBuf.length,
             'SOAPAction'     : 'createFolder',
             'Accept-Encoding': 'identity'
-          }, unarchiveBuf);
+          }, folderBuf);
 
           lastStatus = result.status;
           lastBody   = result.body;
-          log('REQ', 'Unarchive status: ' + lastStatus);
-          log('REQ', 'Unarchive body: ' + lastBody);
+          log('REQ', 'CreateFolder status: ' + lastStatus);
+          log('REQ', 'CreateFolder body: ' + lastBody);
 
           if (lastStatus === 200 && !lastBody.includes('Fault')) {
             uploaded = true;
           }
         } catch(e) {
-          log('ERR', 'Unarchive error: ' + e.message);
+          log('ERR', 'CreateFolder error: ' + e.message);
           lastBody = e.message;
         }
-      } 
-      else {
+      } else {
         lastStatus = 401;
         lastBody = 'Could not obtain session token — check credentials';
       }
 
-      
       if (uploaded) {
-        log('OK', 'Catalog deployed — HTTP ' + lastStatus);
+        log('OK', 'Folder created — HTTP ' + lastStatus);
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, message: 'Catalog deployed successfully', status: lastStatus }));
+        res.end(JSON.stringify({ ok: true, message: 'Folder created successfully', status: lastStatus }));
       } else {
-        log('ERR', 'All endpoints failed — last status: ' + lastStatus);
+        log('ERR', 'Failed — last status: ' + lastStatus);
         res.writeHead(lastStatus || 502, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: false, message: 'Fusion returned HTTP ' + lastStatus, detail: lastBody, status: lastStatus }));
       }
