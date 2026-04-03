@@ -315,7 +315,8 @@ var server = http.createServer(function(req, res) {
             'Authorization'  : basicAuth,
             'Content-Type'   : 'application/octet-stream',
             'Content-Length' : catalogBuf.length,
-            'Accept'         : 'application/json'
+            'Accept'         : 'application/json',
+            'X-Requested-By' : 'XMLHttpRequest'
           }, catalogBuf);
  
           lastStatus = result.status;
@@ -339,7 +340,8 @@ var server = http.createServer(function(req, res) {
             'Authorization'  : basicAuth,
             'Content-Type'   : 'application/octet-stream',
             'Content-Length' : catalogBuf.length,
-            'Accept'         : 'application/json'
+            'Accept'         : 'application/json',
+            'X-Requested-By' : 'XMLHttpRequest'
           }, catalogBuf);
           lastStatus = result.status;
           lastBody   = result.body;
