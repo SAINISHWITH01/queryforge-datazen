@@ -389,7 +389,7 @@ var server = http.createServer(function(req, res) {
             '<dataModel xmlns="http://xmlns.oracle.com/oxp/xmlp" version="2.0" ' +
             'xmlns:xdm="http://xmlns.oracle.com/oxp/xmlp" ' +
             'xmlns:xsd="http://wwww.w3.org/2001/XMLSchema" ' +
-            'defaultDataSourceRef="CloudSQLDataModel">\n' +
+            'defaultDataSourceRef="QueryForgeDataZenDataModel">\n' +
             '<description><![CDATA[QueryForgeDataZenDataModel_csv]]></description>\n' +
             '<dataProperties>\n' +
             '<property name="include_parameters" value="false"/>\n' +
@@ -400,7 +400,7 @@ var server = http.createServer(function(req, res) {
             '</dataProperties>\n' +
             '<dataSets>\n' +
             '<dataSet name="sqlResultsSet" type="simple">\n' +
-            '<sql dataSourceRef="CloudSQLDataModel" nsQuery="true" sp="true" xmlRowTagName="" bindMultiValueAsCommaSepStr="false">\n' +
+            '<sql dataSourceRef="ApplicationDB_FSCM" nsQuery="true" sp="true" xmlRowTagName="" bindMultiValueAsCommaSepStr="false">\n' +
             '<![CDATA[DECLARE\n' +
             '    type sys_refcursor is REF CURSOR;\n' +
             '    xdo_cursor  sys_refcursor;\n' +
