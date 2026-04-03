@@ -341,24 +341,24 @@ var server = http.createServer(function(req, res) {
   // Step 2: Unarchive catalog to /shared/Custom
 if (sessionID) {
   log('REQ', 'Session ID being used: ' + sessionID);
-  var unarchiveSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
+  var createFolderSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
     '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
     '<soapenv:Body>' +
-    '<saw:unarchive>' +
-    '<saw:path>/shared/Custom</saw:path>' +
-    '<saw:archive>' + CATALOG_B64 + '</saw:archive>' +
+    '<saw:createFolder>' +
+    '<saw:path>/shared/Custom/TestFolder</saw:path>' +
+    '<saw:createIfNotExists>true</saw:createIfNotExists>' +
     '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
-    '</saw:unarchive>' +
+    '</saw:createFolder>' +
     '</soapenv:Body>' +
     '</soapenv:Envelope>';
 
   try {
-    var folderBuf    = Buffer.from(unarchiveSoap, 'utf8');
+    var folderBuf    = Buffer.from(createFolderSoap, 'utf8');
     var folderParsed = url.parse(fusionUrl + '/analytics-ws/saw.dll?SoapImpl=webCatalogService');
     var result = await doRequest(folderParsed, 'POST', {
       'Content-Type'   : 'text/xml; charset=UTF-8',
       'Content-Length' : folderBuf.length,
-      'SOAPAction'     : 'unarchive',
+      'SOAPAction'     : 'createFolder',
       'Accept-Encoding': 'identity'
     }, folderBuf);
 
