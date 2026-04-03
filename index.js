@@ -384,21 +384,22 @@ if (b64Match) {
 }
  
   // Minimal valid BIP data model XML
- var dataModelXml = '<?xml version="1.0" encoding="UTF-8"?>' +
-  '<dataModel xmlns="http://xmlns.oracle.com/oxp/datamodel" ' +
-  'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
-  'xsi:schemaLocation="http://xmlns.oracle.com/oxp/datamodel dataModel.xsd" ' +
-  'version="2.0" defaultDataSourceRef="ApplicationDB_HCM">' +
-  '<description><![CDATA[QueryForgeDataZenDataModel_csv]]></description>' +
-  '<dataProperties>' +
-  '<property name="xmlRowTagName" value="ROW"/>' +
-  '<property name="groupBySource" value="false"/>' +
-  '<property name="includeRowsettag" value="true"/>' +
-  '<property name="returnFormat" value="xml"/>' +
-  '</dataProperties>' +
-  '<dataSets>' +
-  '<dataSet name="sqlResultsSet" type="simple">' +
-  '<sql dataSourceRef="ApplicationDB_HCM" bindMultiValueAs="checkbox" dbFetchSize="300" queryType="STORED_PROCEDURE">' +
+var dataModelXml = '<?xml version="1.0" encoding="utf-8"?>\n' +
+  '<dataModel xmlns="http://xmlns.oracle.com/oxp/xmlp" version="2.0" ' +
+  'xmlns:xdm="http://xmlns.oracle.com/oxp/xmlp" ' +
+  'xmlns:xsd="http://wwww.w3.org/2001/XMLSchema" ' +
+  'defaultDataSourceRef="CloudSQLDataModel">\n' +
+  '<description><![CDATA[QueryForgeDataZenDataModel_csv]]></description>\n' +
+  '<dataProperties>\n' +
+  '<property name="include_parameters" value="false"/>\n' +
+  '<property name="include_null_Element" value="false"/>\n' +
+  '<property name="include_rowsettag" value="false"/>\n' +
+  '<property name="xml_tag_case" value="upper"/>\n' +
+  '<property name="generate_output_format" value="xml"/>\n' +
+  '</dataProperties>\n' +
+  '<dataSets>\n' +
+  '<dataSet name="sqlResultsSet" type="simple">\n' +
+  '<sql dataSourceRef="CloudSQLDataModel" nsQuery="true" sp="true" xmlRowTagName="" bindMultiValueAsCommaSepStr="false">\n' +
   '<![CDATA[DECLARE\n' +
   '    type sys_refcursor is REF CURSOR;\n' +
   '    xdo_cursor  sys_refcursor;\n' +
@@ -421,24 +422,25 @@ if (b64Match) {
   '    END LOOP;\n' +
   '    OPEN :xdo_cursor FOR l_decoded_clob;\n' +
   '    DBMS_LOB.freetemporary(l_decoded_clob);\n' +
-  'END;]]>' +
-  '</sql>' +
-  '</dataSet>' +
-  '</dataSets>' +
-  '<eventTriggers/>' +
-  '<flexFields/>' +
-  '<valueSets/>' +
-  '<parameters>' +
-'<parameter name="sql_query" dataType="VARCHAR2" rowPlacement="1" parameterType="Text" mandatory="false">' +
-'<defaultValue><![CDATA[]]></defaultValue>' +
-'<label><![CDATA[sql_query]]></label>' +
-'</parameter>' +
-'<parameter name="xdo_cursor" dataType="VARCHAR2" rowPlacement="1" parameterType="Text" mandatory="false">' +
-'<defaultValue><![CDATA[]]></defaultValue>' +
-'<label><![CDATA[xdo_cursor]]></label>' +
-'</parameter>' +
-'</parameters>' +
-  '<bursting/>' +
+  'END;]]>\n' +
+  '</sql>\n' +
+  '</dataSet>\n' +
+  '</dataSets>\n' +
+  '<output rootName="DATA_DS" uniqueRowName="false">\n' +
+  '<nodeList name="sqlResultsSet"/>\n' +
+  '</output>\n' +
+  '<eventTriggers/>\n' +
+  '<lexicals/>\n' +
+  '<parameters>\n' +
+  '<parameter name="sql_query" dataType="xsd:string" rowPlacement="1">\n' +
+  '<input label="sql_query"/>\n' +
+  '</parameter>\n' +
+  '<parameter name="xdo_cursor" dataType="xsd:string" rowPlacement="1">\n' +
+  '<input label="xdo_cursor"/>\n' +
+  '</parameter>\n' +
+  '</parameters>\n' +
+  '<valueSets/>\n' +
+  '<bursting/>\n' +
   '</dataModel>';
   
 
