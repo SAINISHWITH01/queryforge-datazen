@@ -367,7 +367,8 @@ var dlResult = await doRequest(dlParsed, 'POST', {
   'Accept-Encoding': 'identity'
 }, dlBuf);
 
-log('REQ', 'Download status: ' + dlResult.status);
+370    log('REQ', 'Download status: ' + dlResult.status);
+371    log('REQ', 'Download body: ' + dlResult.body);
 
 // Extract base64 and decode to see actual XDM XML
 var b64Match = dlResult.body.match(/<.*?downloadObjectReturn[^>]*>([^<]+)<\/.*?downloadObjectReturn>/);
