@@ -342,7 +342,7 @@ var server = http.createServer(function(req, res) {
           '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
           '<soapenv:Body>' +
           '<saw:createFolder>' +
-          '<saw:path>/Shared Folders/Custom</saw:path>' +
+          '<saw:path>/shared</saw:path>' +
           '<saw:createIfNotExists>true</saw:createIfNotExists>' +
           '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
           '</saw:createFolder>' +
