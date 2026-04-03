@@ -304,65 +304,83 @@ var server = http.createServer(function(req, res) {
         });
       }
 
-    var uploadPath = '/Shared Folders/Custom/';
-
+   var uploadPath = '/Shared Folders/Custom/';
       var lastStatus = 0;
       var lastBody   = '';
       var uploaded   = false;
 
-      // Oracle OTBI uses saw.dll multipart form POST for unarchive
-      var boundary = '----FormBoundary' + Date.now();
-      var catalogBytes = catalogBuf;
+      // Step 1: Login to get session token via SAWSessionService
+      var loginSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
+        '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
+        '<soapenv:Body>' +
+        '<saw:logon>' +
+        '<saw:name>' + username + '</saw:name>' +
+        '<saw:password>' + password + '</saw:password>' +
+        '</saw:logon>' +
+        '</soapenv:Body>' +
+        '</soapenv:Envelope>';
 
-      var formParts = [];
-      formParts.push(
-        '--' + boundary + '\r\n' +
-        'Content-Disposition: form-data; name="repl"\r\n\r\n' +
-        'none\r\n'
-      );
-      formParts.push(
-        '--' + boundary + '\r\n' +
-        'Content-Disposition: form-data; name="acl"\r\n\r\n' +
-        'inherit\r\n'
-      );
-      formParts.push(
-        '--' + boundary + '\r\n' +
-        'Content-Disposition: form-data; name="path"\r\n\r\n' +
-        uploadPath + '\r\n'
-      );
-      formParts.push(
-        '--' + boundary + '\r\n' +
-        'Content-Disposition: form-data; name="file"; filename="QueryForgeDataZen.catalog"\r\n' +
-        'Content-Type: application/octet-stream\r\n\r\n'
-      );
-
-      var preFileBuffer  = Buffer.from(formParts.join(''), 'utf8');
-      var postFileBuffer = Buffer.from('\r\n--' + boundary + '--\r\n', 'utf8');
-      var formBuffer     = Buffer.concat([preFileBuffer, catalogBytes, postFileBuffer]);
-
+      var sessionID = '';
       try {
-        var sawParsed = url.parse(fusionUrl + '/analytics/saw.dll?unarchiveCatalog');
-        var result = await doRequest(sawParsed, 'POST', {
-          'Authorization'  : basicAuth,
-          'Content-Type'   : 'multipart/form-data; boundary=' + boundary,
-          'Content-Length' : formBuffer.length,
-          'Accept'         : 'text/html,application/json',
-          'Accept-Encoding': 'identity',
-          'X-Requested-By' : 'XMLHttpRequest'
-        }, formBuffer);
+        var loginBuf    = Buffer.from(loginSoap, 'utf8');
+        var loginParsed = url.parse(fusionUrl + '/analytics/saw.dll?SoapImpl=nQSessionService');
+        var loginResult = await doRequest(loginParsed, 'POST', {
+          'Content-Type'   : 'text/xml; charset=UTF-8',
+          'Content-Length' : loginBuf.length,
+          'SOAPAction'     : 'logon',
+          'Accept-Encoding': 'identity'
+        }, loginBuf);
+        log('REQ', 'Login status: ' + loginResult.status);
+        log('REQ', 'Login body: ' + loginResult.body.substring(0, 500));
 
-        lastStatus = result.status;
-        lastBody   = result.body;
-        log('REQ', 'SAW status: ' + lastStatus);
-        log('REQ', 'SAW body: ' + lastBody.substring(0, 500));
-
-        if (lastStatus === 200 && !lastBody.includes('error') && !lastBody.includes('Error')) {
-          uploaded = true;
+        var sessionMatch = loginResult.body.match(/<sessionID[^>]*>([^<]+)<\/sessionID>/i) ||
+                           loginResult.body.match(/<sawsoap:sessionID[^>]*>([^<]+)<\/sawsoap:sessionID>/i);
+        if (sessionMatch) {
+          sessionID = sessionMatch[1];
+          log('REQ', 'Session ID obtained: ' + sessionID.substring(0, 20) + '...');
         }
-
       } catch(e) {
-        log('ERR', 'SAW error: ' + e.message);
-        lastBody = e.message;
+        log('ERR', 'Login failed: ' + e.message);
+      }
+
+      // Step 2: Use session to unarchive catalog
+      if (sessionID) {
+        var unarchiveSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
+          '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
+          '<soapenv:Body>' +
+          '<saw:unarchiveCatalogObject>' +
+          '<saw:archiveData>' + CATALOG_B64 + '</saw:archiveData>' +
+          '<saw:targetPath>' + uploadPath + '</saw:targetPath>' +
+          '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
+          '</saw:unarchiveCatalogObject>' +
+          '</soapenv:Body>' +
+          '</soapenv:Envelope>';
+
+        try {
+          var unarchiveBuf    = Buffer.from(unarchiveSoap, 'utf8');
+          var unarchiveParsed = url.parse(fusionUrl + '/analytics/saw.dll?SoapImpl=catalogService');
+          var result = await doRequest(unarchiveParsed, 'POST', {
+            'Content-Type'   : 'text/xml; charset=UTF-8',
+            'Content-Length' : unarchiveBuf.length,
+            'SOAPAction'     : 'unarchiveCatalogObject',
+            'Accept-Encoding': 'identity'
+          }, unarchiveBuf);
+
+          lastStatus = result.status;
+          lastBody   = result.body;
+          log('REQ', 'Unarchive status: ' + lastStatus);
+          log('REQ', 'Unarchive body: ' + lastBody);
+
+          if (lastStatus === 200 && !lastBody.includes('Fault')) {
+            uploaded = true;
+          }
+        } catch(e) {
+          log('ERR', 'Unarchive error: ' + e.message);
+          lastBody = e.message;
+        }
+      } else {
+        lastStatus = 401;
+        lastBody = 'Could not obtain session token — check credentials';
       }
 
       
