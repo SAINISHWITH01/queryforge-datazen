@@ -328,7 +328,7 @@ var server = http.createServer(function(req, res) {
         var loginResult = await doRequest(loginParsed, 'POST', {
           'Content-Type'   : 'text/xml; charset=UTF-8',
           'Content-Length' : loginBuf.length,
-          'SOAPAction'     : 'logon',
+          'SOAPAction'     : 'unarchive',
           'Accept-Encoding': 'identity'
         }, loginBuf);
         log('REQ', 'Login status: ' + loginResult.status);
@@ -349,11 +349,11 @@ var server = http.createServer(function(req, res) {
         var unarchiveSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
   '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
   '<soapenv:Body>' +
-  '<saw:unarchiveCatalogObject>' +
+  '<saw:unarchive>' +
   '<saw:archiveData>' + CATALOG_B64 + '</saw:archiveData>' +
   '<saw:targetPath>' + uploadPath + '</saw:targetPath>' +
   '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
-  '</saw:unarchiveCatalogObject>' +
+  '</saw:unarchive>' +
   '</soapenv:Body>' +
   '</soapenv:Envelope>';
 
