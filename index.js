@@ -1,7 +1,7 @@
 const http  = require('http');
 const https = require('https');
 const url   = require('url');
-
+const zlib = require('zlib');
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -283,10 +283,20 @@ var server = http.createServer(function(req, res) {
           };
           var r = protocol.request(opts, function(resp) {
             var chunks = [];
-            resp.on('data', function(c) { chunks.push(c); });
-            resp.on('end', function() {
+            var encoding = resp.headers['content-encoding'];
+            var stream = resp;
+
+            if (encoding === 'gzip') {
+              stream = resp.pipe(zlib.createGunzip());
+            } else if (encoding === 'deflate') {
+              stream = resp.pipe(zlib.createInflate());
+            }
+
+            stream.on('data', function(c) { chunks.push(c); });
+            stream.on('end', function() {
               resolve({ status: resp.statusCode, headers: resp.headers, body: Buffer.concat(chunks).toString() });
             });
+            stream.on('error', reject);
           });
           r.on('error', reject);
           if (body) r.write(body);
