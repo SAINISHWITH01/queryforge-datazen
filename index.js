@@ -351,7 +351,7 @@ var server = http.createServer(function(req, res) {
   '<soapenv:Body>' +
   '<saw:unarchive>' +
   '<saw:archive>' + CATALOG_B64 + '</saw:archive>' +
-  '<saw:Path>' + uploadPath + '</saw:Path>' +
+  '<saw:path>' + uploadPath + '</saw:path>' +
   '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
   '</saw:unarchive>' +
   '</soapenv:Body>' +
