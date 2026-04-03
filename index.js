@@ -296,31 +296,30 @@ var server = http.createServer(function(req, res) {
 
       // Try both known Oracle OTBI/BIP upload endpoints
       var uploadPath = '/shared/Custom/';
+      // Only use xmlpserver endpoint — analytics/pub/v1 requires OAuth
       var endpoints = [
-        '/analytics/pub/v1/catalog/uploadArchive?path=' + encodeURIComponent(uploadPath) + '&overwrite=true',
         '/xmlpserver/services/rest/v1/catalog/uploadArchive?path=' + encodeURIComponent(uploadPath) + '&overwrite=true'
       ];
 
-      var lastStatus = 0;
-      var lastBody   = '';
-      var uploaded   = false;
-
-      // Step 1: Get session cookie via authenticated GET first
+      // Step 1: Get OAM session cookie via xmlpserver ping
       var cookieStr = '';
       try {
-        var tokenResult = await doRequest(parsedFusion, 'GET', {
+        var pingParsed = url.parse(fusionUrl + '/xmlpserver/services/rest/v1/catalog');
+        var pingResult = await doRequest(pingParsed, 'GET', {
           'Authorization' : basicAuth,
           'X-Requested-By': 'XMLHttpRequest',
           'Accept'        : 'application/json'
         }, null);
-        var authCookie = tokenResult.headers['set-cookie'];
+        log('REQ', 'Ping status: ' + pingResult.status);
+        var authCookie = pingResult.headers['set-cookie'];
         cookieStr = authCookie ? authCookie.map(function(c) { return c.split(';')[0]; }).join('; ') : '';
-        log('REQ', 'Session cookie obtained: ' + (cookieStr ? 'yes' : 'none'));
+        log('REQ', 'Session cookie: ' + (cookieStr ? 'yes' : 'none'));
+        log('REQ', 'Ping body: ' + pingResult.body.substring(0, 200));
       } catch(e) {
-        log('ERR', 'Could not get session cookie: ' + e.message);
+        log('ERR', 'Ping failed: ' + e.message);
       }
 
-    for (var ei = 0; ei < endpoints.length; ei++) {
+      for (var ei = 0; ei < endpoints.length; ei++) {
         var apiPath = endpoints[ei];
         log('REQ', 'Trying → ' + parsedFusion.hostname + apiPath);
 
@@ -331,7 +330,8 @@ var server = http.createServer(function(req, res) {
             'Content-Type'   : 'application/octet-stream',
             'Content-Length' : catalogBuf.length,
             'Accept'         : 'application/json',
-            'X-Requested-By' : 'XMLHttpRequest'
+            'X-Requested-By' : 'XMLHttpRequest',
+            'Cookie'         : cookieStr
           }, catalogBuf);
 
           lastStatus = result.status;
@@ -339,15 +339,12 @@ var server = http.createServer(function(req, res) {
           log('REQ', 'Response status: ' + lastStatus);
           log('REQ', 'Response body: ' + lastBody.substring(0, 300));
 
-          // Oracle redirects to login page when auth fails — treat as 401
           if ((result.status === 301 || result.status === 302 || result.status === 303) && result.headers['location']) {
             var redirectUrl = result.headers['location'];
-            log('REQ', 'Following redirect → ' + redirectUrl);
-            if (redirectUrl.includes('AtkHomePageWelcome') || redirectUrl.includes('login') || redirectUrl.includes('faces')) {
-              lastStatus = 401;
-              lastBody = 'Authentication failed — invalid credentials or insufficient privileges';
-              break;
-            }
+            log('REQ', 'Redirect → ' + redirectUrl);
+            lastStatus = 401;
+            lastBody = 'Authentication failed — Oracle redirected to: ' + redirectUrl;
+            break;
           }
 
           if (lastStatus === 200 || lastStatus === 201 || lastStatus === 204) {
