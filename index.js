@@ -389,13 +389,15 @@ if (sessionID) {
   '<flexFields/>' +
   '<valueSets/>' +
   '<parameters>' +
-  '<parameter name="sql_query" dataType="VARCHAR2" rowPlacement="1">' +
-  '<defaultValue><![CDATA[]]></defaultValue>' +
-  '</parameter>' +
-  '<parameter name="xdo_cursor" dataType="CURSOR" rowPlacement="2">' +
-  '<defaultValue><![CDATA[]]></defaultValue>' +
-  '</parameter>' +
-  '</parameters>' +
+'<parameter name="sql_query" dataType="VARCHAR2" rowPlacement="1" parameterType="Text" mandatory="false">' +
+'<defaultValue><![CDATA[]]></defaultValue>' +
+'<label><![CDATA[sql_query]]></label>' +
+'</parameter>' +
+'<parameter name="xdo_cursor" dataType="VARCHAR2" rowPlacement="1" parameterType="Text" mandatory="false">' +
+'<defaultValue><![CDATA[]]></defaultValue>' +
+'<label><![CDATA[xdo_cursor]]></label>' +
+'</parameter>' +
+'</parameters>' +
   '<bursting/>' +
   '</dataModel>';
   
