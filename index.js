@@ -338,11 +338,12 @@ var server = http.createServer(function(req, res) {
 
       // Step 2: Create folder /Shared Folders/Custom
       if (sessionID) {
+        log('REQ', 'Session ID being used: ' + sessionID);
         var createFolderSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
           '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
           '<soapenv:Body>' +
           '<saw:createFolder>' +
-          '<saw:path>/shared</saw:path>' +
+          '<saw:path>/shared Folders/Custom</saw:path>' +
           '<saw:createIfNotExists>true</saw:createIfNotExists>' +
           '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
           '</saw:createFolder>' +
