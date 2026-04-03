@@ -352,6 +352,7 @@ var server = http.createServer(function(req, res) {
   '<soapenv:Body>' +
   '<saw:createFolder>' +
   '<saw:path>/Shared Folders/Custom/TestFolder</saw:path>' +
+'<saw:createIfNotExists>true</saw:createIfNotExists>' +
   '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
   '</saw:createFolder>' +
   '</soapenv:Body>' +
