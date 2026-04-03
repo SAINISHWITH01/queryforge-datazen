@@ -241,8 +241,7 @@ var server = http.createServer(function(req, res) {
     })();
   }
 
-
-  // ── UPLOAD CATALOG ────────────────────────────────────────────
+ // ── UPLOAD CATALOG ────────────────────────────────────────────
   // POST /upload-catalog
   // Body (JSON): { fusionUrl, username, password }
   if (req.url === '/upload-catalog' && req.method === 'POST') {
@@ -250,17 +249,16 @@ var server = http.createServer(function(req, res) {
       var fusionUrl = (data.fusionUrl || '').trim().replace(/\/+$/, '');
       var username  = (data.username  || '').trim();
       var password  = (data.password  || '').trim();
-
+ 
       if (!fusionUrl || !username || !password) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({ ok: false, message: 'Missing fusionUrl, username, or password' }));
       }
-
+ 
       var CATALOG_B64 = "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";
-
+ 
       var catalogBuf = Buffer.from(CATALOG_B64, 'base64');
-
-      var uploadPath = '/shared/Custom/';
+ 
       var parsedFusion;
       try {
         parsedFusion = url.parse(fusionUrl);
@@ -268,54 +266,98 @@ var server = http.createServer(function(req, res) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({ ok: false, message: 'Invalid Fusion URL: ' + e.message }));
       }
-
-      var apiPath = '/analytics/pub/v1/catalog/uploadArchive?path=' + encodeURIComponent(uploadPath) + '&overwrite=true';
+ 
       var basicAuth = 'Basic ' + Buffer.from(username + ':' + password).toString('base64');
-
-      var options = {
-        hostname: parsedFusion.hostname,
-        port: parsedFusion.port || (parsedFusion.protocol === 'https:' ? 443 : 80),
-        path: apiPath,
-        method: 'POST',
-        headers: {
-          'Authorization': basicAuth,
-          'Content-Type': 'application/octet-stream',
-          'Content-Length': catalogBuf.length,
-          'Accept': 'application/json'
-        },
-        rejectUnauthorized: false
-      };
-
-      log('REQ', 'Uploading catalog → ' + parsedFusion.hostname + apiPath);
-
-      var protocol = parsedFusion.protocol === 'https:' ? https : http;
-
-      var fusionReq = protocol.request(options, function(fusionRes) {
-        var chunks = [];
-        fusionRes.on('data', function(c) { chunks.push(c); });
-        fusionRes.on('end', function() {
-          var body = Buffer.concat(chunks).toString();
-          var status = fusionRes.statusCode;
-          log('OK', 'Fusion response: HTTP ' + status);
-
-          if (status === 200 || status === 201 || status === 204) {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ ok: true, message: 'Catalog deployed successfully', status: status }));
-          } else {
-            res.writeHead(status, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ ok: false, message: 'Fusion returned HTTP ' + status, detail: body, status: status }));
-          }
+ 
+      // Helper: do one HTTP/S request and return { status, headers, body }
+      function doRequest(parsedUrl, method, headers, body) {
+        return new Promise(function(resolve, reject) {
+          var protocol = parsedUrl.protocol === 'https:' ? https : http;
+          var opts = {
+            hostname: parsedUrl.hostname,
+            port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+            path: parsedUrl.path || '/',
+            method: method,
+            headers: headers,
+            rejectUnauthorized: false
+          };
+          var r = protocol.request(opts, function(resp) {
+            var chunks = [];
+            resp.on('data', function(c) { chunks.push(c); });
+            resp.on('end', function() {
+              resolve({ status: resp.statusCode, headers: resp.headers, body: Buffer.concat(chunks).toString() });
+            });
+          });
+          r.on('error', reject);
+          if (body) r.write(body);
+          r.end();
         });
-      });
-
-      fusionReq.on('error', function(e) {
-        log('ERR', 'Fusion request error: ' + e.message);
-        res.writeHead(502, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: false, message: 'Could not reach Fusion: ' + e.message }));
-      });
-
-      fusionReq.write(catalogBuf);
-      fusionReq.end();
+      }
+ 
+      // Try both known Oracle OTBI/BIP upload endpoints
+      var uploadPath = '/shared/Custom/';
+      var endpoints = [
+        '/analytics/pub/v1/catalog/uploadArchive?path=' + encodeURIComponent(uploadPath) + '&overwrite=true',
+        '/xmlpserver/services/rest/v1/catalog/uploadArchive?path=' + encodeURIComponent(uploadPath) + '&overwrite=true'
+      ];
+ 
+      var lastStatus = 0;
+      var lastBody   = '';
+      var uploaded   = false;
+ 
+      for (var ei = 0; ei < endpoints.length; ei++) {
+        var apiPath = endpoints[ei];
+        log('REQ', 'Trying → ' + parsedFusion.hostname + apiPath);
+ 
+        try {
+          var result = await doRequest(parsedFusion, 'POST', {
+            'Authorization'  : basicAuth,
+            'Content-Type'   : 'application/octet-stream',
+            'Content-Length' : catalogBuf.length,
+            'Accept'         : 'application/json'
+          }, catalogBuf);
+ 
+          lastStatus = result.status;
+          lastBody   = result.body;
+ 
+          // Follow one level of redirect (302/301) — carry auth along
+          if ((result.status === 301 || result.status === 302 || result.status === 303) && result.headers['location']) {
+            var redirectUrl = result.headers['location'];
+            log('REQ', 'Following redirect → ' + redirectUrl);
+            var parsedRedirect = url.parse(redirectUrl);
+            result = await doRequest(parsedRedirect, 'POST', {
+              'Authorization'  : basicAuth,
+              'Content-Type'   : 'application/octet-stream',
+              'Content-Length' : catalogBuf.length,
+              'Accept'         : 'application/json'
+            }, catalogBuf);
+            lastStatus = result.status;
+            lastBody   = result.body;
+          }
+ 
+          if (lastStatus === 200 || lastStatus === 201 || lastStatus === 204) {
+            uploaded = true;
+            break;
+          }
+ 
+          // 401/403 = wrong credentials — no point trying next endpoint
+          if (lastStatus === 401 || lastStatus === 403) break;
+ 
+        } catch(e) {
+          log('ERR', 'Request error: ' + e.message);
+          lastBody = e.message;
+        }
+      }
+ 
+      if (uploaded) {
+        log('OK', 'Catalog deployed — HTTP ' + lastStatus);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, message: 'Catalog deployed successfully', status: lastStatus }));
+      } else {
+        log('ERR', 'All endpoints failed — last status: ' + lastStatus);
+        res.writeHead(lastStatus || 502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, message: 'Fusion returned HTTP ' + lastStatus, detail: lastBody, status: lastStatus }));
+      }
     });
   }
   
