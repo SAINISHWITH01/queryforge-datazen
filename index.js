@@ -345,12 +345,12 @@ var server = http.createServer(function(req, res) {
   '<saw:getSubItems>' +
   '<saw:path>/</saw:path>' +
   '<saw:mask>*</saw:mask>' +
+  '<saw:resolveLinks>false</saw:resolveLinks>' +
   '<saw:recursive>false</saw:recursive>' +
   '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
   '</saw:getSubItems>' +
   '</soapenv:Body>' +
   '</soapenv:Envelope>';
-
         try {
           var folderBuf    = Buffer.from(createFolderSoap, 'utf8');
           var folderParsed = url.parse(fusionUrl + '/analytics-ws/saw.dll?SoapImpl=webCatalogService');
