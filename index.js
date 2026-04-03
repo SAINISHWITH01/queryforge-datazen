@@ -344,12 +344,12 @@ if (sessionID) {
   log('REQ', 'Session ID being used: ' + sessionID);
 
   // Minimal valid BIP data model XML
-  var dataModelXml = '<?xml version="1.0" encoding="UTF-8"?>' +
+ var dataModelXml = '<?xml version="1.0" encoding="UTF-8"?>' +
   '<dataModel xmlns="http://xmlns.oracle.com/oxp/datamodel" ' +
   'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
   'xsi:schemaLocation="http://xmlns.oracle.com/oxp/datamodel dataModel.xsd" ' +
-  'version="2.0" defaultDataSourceRef="demo">' +
-  '<description><![CDATA[Sample Data Model]]></description>' +
+  'version="2.0" defaultDataSourceRef="ApplicationDB_HCM">' +
+  '<description><![CDATA[QueryForgeDataZenDataModel_csv]]></description>' +
   '<dataProperties>' +
   '<property name="xmlRowTagName" value="ROW"/>' +
   '<property name="groupBySource" value="false"/>' +
@@ -357,23 +357,53 @@ if (sessionID) {
   '<property name="returnFormat" value="xml"/>' +
   '</dataProperties>' +
   '<dataSets>' +
-  '<dataSet name="DataSet1" type="simple">' +
-  '<sql dataSourceRef="ApplicationDB_HCM">' +
-  '<![CDATA[SELECT 1 AS SAMPLE_COL FROM DUAL]]>' +
+  '<dataSet name="sqlResultsSet" type="simple">' +
+  '<sql dataSourceRef="ApplicationDB_HCM" bindMultiValueAs="checkbox" dbFetchSize="300" queryType="STORED_PROCEDURE">' +
+  '<![CDATA[DECLARE\n' +
+  '    type sys_refcursor is REF CURSOR;\n' +
+  '    xdo_cursor  sys_refcursor;\n' +
+  '    l_sql_query  RAW(32767);\n' +
+  '    var11       CLOB := \'\';\n' +
+  '    l_encoded_clob CLOB := :sql_query;\n' +
+  '    l_decoded_clob CLOB;\n' +
+  '    l_chunk_size INTEGER := 32000;\n' +
+  '    l_buffer VARCHAR2(32767);\n' +
+  '    l_pos INTEGER := 1;\n' +
+  '    l_length INTEGER := DBMS_LOB.getlength(l_encoded_clob);\n' +
+  'BEGIN\n' +
+  '    DBMS_LOB.createtemporary(l_decoded_clob, TRUE);\n' +
+  '    WHILE l_pos <= l_length LOOP\n' +
+  '        DBMS_LOB.READ(l_encoded_clob, l_chunk_size, l_pos, l_buffer);\n' +
+  '        l_sql_query := UTL_RAW.CAST_TO_RAW(l_buffer);\n' +
+  '        var11 := TO_CLOB(UTL_RAW.CAST_TO_VARCHAR2(UTL_ENCODE.BASE64_DECODE(l_sql_query)));\n' +
+  '        DBMS_LOB.writeappend(l_decoded_clob, LENGTH(var11), var11);\n' +
+  '        l_pos := l_pos + l_chunk_size;\n' +
+  '    END LOOP;\n' +
+  '    OPEN :xdo_cursor FOR l_decoded_clob;\n' +
+  '    DBMS_LOB.freetemporary(l_decoded_clob);\n' +
+  'END;]]>' +
   '</sql>' +
   '</dataSet>' +
   '</dataSets>' +
   '<eventTriggers/>' +
   '<flexFields/>' +
   '<valueSets/>' +
-  '<parameters/>' +
+  '<parameters>' +
+  '<parameter name="sql_query" dataType="VARCHAR2" rowPlacement="1">' +
+  '<defaultValue><![CDATA[]]></defaultValue>' +
+  '</parameter>' +
+  '<parameter name="xdo_cursor" dataType="CURSOR" rowPlacement="2">' +
+  '<defaultValue><![CDATA[]]></defaultValue>' +
+  '</parameter>' +
+  '</parameters>' +
   '<bursting/>' +
   '</dataModel>';
+  
 
 // Zip the data model XML first
  
 var zip = new JSZip();
-zip.file('SampleDataModel.xdm', dataModelXml);
+zip.file('QueryForgeDataZenDataModel_csv.xdm', dataModelXml);
 var dataModelZipped = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
 var dataModelB64 = dataModelZipped.toString('base64');
   
@@ -385,7 +415,7 @@ var dataModelB64 = dataModelZipped.toString('base64');
   '<v2:userID>' + username + '</v2:userID>' +
   '<v2:password>' + password + '</v2:password>' +
   '<v2:objectType>xdmz</v2:objectType>' +
-  '<v2:reportObjectAbsolutePathURL>/Custom/SampleDataModel.xdm</v2:reportObjectAbsolutePathURL>' +
+  '<v2:reportObjectAbsolutePathURL>/Custom/TestFolder/QueryForgeDataZenDataModel_csv.xdmz</v2:reportObjectAbsolutePathURL>' +
   '<v2:objectZippedData>' + dataModelB64 + '</v2:objectZippedData>' +
   '</v2:uploadObject>' +
   '</soapenv:Body>' +
