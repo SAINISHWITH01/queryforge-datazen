@@ -347,26 +347,23 @@ var server = http.createServer(function(req, res) {
       // Step 2: Use session to unarchive catalog
       if (sessionID) {
         log('REQ', 'Upload path: ' + uploadPath);
-        var unarchiveSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
+       var createFolderSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
   '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
   '<soapenv:Body>' +
-  '<saw:unarchive>' +
-  '<saw:path>' + uploadPath + '</saw:path>' +
-  '<saw:archive>' + CATALOG_B64 + '</saw:archive>' +
+  '<saw:createFolder>' +
+  '<saw:path>/Shared Folders/Custom/TestFolder</saw:path>' +
   '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
-  '</saw:unarchive>' +
+  '</saw:createFolder>' +
   '</soapenv:Body>' +
   '</soapenv:Envelope>';
 
         try {
-          var unarchiveBuf    = Buffer.from(unarchiveSoap, 'utf8');
-          //var unarchiveParsed = url.parse(fusionUrl + '/analytics/saw.dll?SoapImpl=catalogService');
-          //var unarchiveParsed = url.parse(fusionUrl + '/analytics-ws/saw.dll?SoapImpl=catalogService');
+         var unarchiveBuf    = Buffer.from(createFolderSoap, 'utf8');
           var unarchiveParsed = url.parse(fusionUrl + '/analytics-ws/saw.dll?SoapImpl=webCatalogService');
           var result = await doRequest(unarchiveParsed, 'POST', {
             'Content-Type'   : 'text/xml; charset=UTF-8',
             'Content-Length' : unarchiveBuf.length,
-            'SOAPAction'     : 'unarchive',
+            'SOAPAction'     : 'createFolder',
             'Accept-Encoding': 'identity'
           }, unarchiveBuf);
 
@@ -382,7 +379,8 @@ var server = http.createServer(function(req, res) {
           log('ERR', 'Unarchive error: ' + e.message);
           lastBody = e.message;
         }
-      } else {
+      } 
+      else {
         lastStatus = 401;
         lastBody = 'Could not obtain session token — check credentials';
       }
