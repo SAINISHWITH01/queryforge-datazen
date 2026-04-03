@@ -360,19 +360,19 @@ if (sessionID) {
 
   var dataModelB64 = Buffer.from(dataModelXml).toString('base64');
 
-  var uploadSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
-    '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v2="http://xmlns.oracle.com/oxp/service/v2">' +
-    '<soapenv:Header/>' +
-    '<soapenv:Body>' +
-    '<v2:uploadObject>' +
-    '<v2:reportObjectAbsolutePath>/Custom/SampleDataModel.xdm</v2:reportObjectAbsolutePath>' +
-    '<v2:objectType>xdm</v2:objectType>' +
-    '<v2:reportObjectData>' + dataModelB64 + '</v2:reportObjectData>' +
-    '<v2:userID>' + username + '</v2:userID>' +
-    '<v2:password>' + password + '</v2:password>' +
-    '</v2:uploadObject>' +
-    '</soapenv:Body>' +
-    '</soapenv:Envelope>';
+ var uploadSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
+  '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v2="http://xmlns.oracle.com/oxp/service/v2">' +
+  '<soapenv:Header/>' +
+  '<soapenv:Body>' +
+  '<v2:uploadObject>' +
+  '<v2:userID>' + username + '</v2:userID>' +
+  '<v2:password>' + password + '</v2:password>' +
+  '<v2:objectType>xdm</v2:objectType>' +
+  '<v2:reportObjectAbsolutePathURL>/Custom/SampleDataModel.xdm</v2:reportObjectAbsolutePathURL>' +
+  '<v2:objectZippedData>' + dataModelB64 + '</v2:objectZippedData>' +
+  '</v2:uploadObject>' +
+  '</soapenv:Body>' +
+  '</soapenv:Envelope>';
 
   try {
     var folderBuf    = Buffer.from(uploadSoap, 'utf8');
