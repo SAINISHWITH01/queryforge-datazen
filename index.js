@@ -244,8 +244,6 @@ var server = http.createServer(function(req, res) {
   }
 
 // ── UPLOAD CATALOG ────────────────────────────────────────────
-  // POST /upload-catalog
-  // Body (JSON): { fusionUrl, username, password }
   if (req.url === '/upload-catalog' && req.method === 'POST') {
     return getBody(req, async function(data) {
       var fusionUrl = (data.fusionUrl || '').trim().replace(/\/+$/, '').replace(/^http:/, 'https:');
@@ -256,7 +254,6 @@ var server = http.createServer(function(req, res) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({ ok: false, message: 'Missing fusionUrl, username, or password' }));
       }
-      var CATALOG_B64 = "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";
 
       var parsedFusion;
       try {
@@ -266,7 +263,7 @@ var server = http.createServer(function(req, res) {
         return res.end(JSON.stringify({ ok: false, message: 'Invalid Fusion URL: ' + e.message }));
       }
 
-      // Helper: do one HTTP/S request and return { status, headers, body }
+      // Helper: do one HTTP/S request
       function doRequest(parsedUrl, method, headers, body) {
         return new Promise(function(resolve, reject) {
           var protocol = parsedUrl.protocol === 'https:' ? https : http;
@@ -282,13 +279,11 @@ var server = http.createServer(function(req, res) {
             var chunks = [];
             var encoding = resp.headers['content-encoding'];
             var stream = resp;
-
             if (encoding === 'gzip') {
               stream = resp.pipe(zlib.createGunzip());
             } else if (encoding === 'deflate') {
               stream = resp.pipe(zlib.createInflate());
             }
-
             stream.on('data', function(c) { chunks.push(c); });
             stream.on('end', function() {
               resolve({ status: resp.statusCode, headers: resp.headers, body: Buffer.concat(chunks).toString() });
@@ -301,11 +296,36 @@ var server = http.createServer(function(req, res) {
         });
       }
 
+      // Helper: upload BIP object
+      async function uploadBIPObject(fusionUrl, username, password, objectType, path, zippedB64) {
+        var soap = '<?xml version="1.0" encoding="UTF-8"?>' +
+          '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v2="http://xmlns.oracle.com/oxp/service/v2">' +
+          '<soapenv:Header/>' +
+          '<soapenv:Body>' +
+          '<v2:uploadObject>' +
+          '<v2:userID>' + username + '</v2:userID>' +
+          '<v2:password>' + password + '</v2:password>' +
+          '<v2:objectType>' + objectType + '</v2:objectType>' +
+          '<v2:reportObjectAbsolutePathURL>' + path + '</v2:reportObjectAbsolutePathURL>' +
+          '<v2:objectZippedData>' + zippedB64 + '</v2:objectZippedData>' +
+          '</v2:uploadObject>' +
+          '</soapenv:Body>' +
+          '</soapenv:Envelope>';
+        var buf    = Buffer.from(soap, 'utf8');
+        var parsed = url.parse(fusionUrl + '/xmlpserver/services/v2/CatalogService');
+        return await doRequest(parsed, 'POST', {
+          'Content-Type'   : 'text/xml; charset=UTF-8',
+          'Content-Length' : buf.length,
+          'SOAPAction'     : 'uploadObject',
+          'Accept-Encoding': 'identity'
+        }, buf);
+      }
+
       var lastStatus = 0;
       var lastBody   = '';
       var uploaded   = false;
 
-      // Step 1: Login to get session token
+      // ── Step 1: Login ──────────────────────────────────────
       var loginSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
         '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
         '<soapenv:Body>' +
@@ -327,8 +347,6 @@ var server = http.createServer(function(req, res) {
           'Accept-Encoding': 'identity'
         }, loginBuf);
         log('REQ', 'Login status: ' + loginResult.status);
-        log('REQ', 'Login body: ' + loginResult.body.substring(0, 500));
-
         var sessionMatch = loginResult.body.match(/<sessionID[^>]*>([^<]+)<\/sessionID>/i) ||
                            loginResult.body.match(/<sawsoap:sessionID[^>]*>([^<]+)<\/sawsoap:sessionID>/i);
         if (sessionMatch) {
@@ -339,164 +357,180 @@ var server = http.createServer(function(req, res) {
         log('ERR', 'Login failed: ' + e.message);
       }
 
-      // Step 2: Create folder /Shared Folders/Custom
-  // Step 2: Unarchive catalog to /shared/Custom
-if (sessionID) {
-  log('REQ', 'Session ID being used: ' + sessionID);
+      if (sessionID) {
+        try {
 
-// First download existing working DM to see correct XML structure
-var downloadSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
-  '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v2="http://xmlns.oracle.com/oxp/service/v2">' +
-  '<soapenv:Header/>' +
-  '<soapenv:Body>' +
-  '<v2:downloadObject>' +
-  '<v2:userID>' + username + '</v2:userID>' +
-  '<v2:password>' + password + '</v2:password>' +
-  '<v2:reportAbsolutePath>/Custom/CloudSQL/CloudSQLDataModel_csv.xdm</v2:reportAbsolutePath>' +
-  '</v2:downloadObject>' +
-  '</soapenv:Body>' +
-  '</soapenv:Envelope>';
+          // ── Step 2: Create folder /shared/Custom/QueryForgeDataZen ──
+          log('REQ', 'Creating folder...');
+          var createFolderSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
+            '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
+            '<soapenv:Body>' +
+            '<saw:createFolder>' +
+            '<saw:path>/shared/Custom/QueryForgeDataZen</saw:path>' +
+            '<saw:createIfNotExists>true</saw:createIfNotExists>' +
+            '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
+            '</saw:createFolder>' +
+            '</soapenv:Body>' +
+            '</soapenv:Envelope>';
+          var folderBuf    = Buffer.from(createFolderSoap, 'utf8');
+          var folderParsed = url.parse(fusionUrl + '/analytics-ws/saw.dll?SoapImpl=webCatalogService');
+          var folderResult = await doRequest(folderParsed, 'POST', {
+            'Content-Type'   : 'text/xml; charset=UTF-8',
+            'Content-Length' : folderBuf.length,
+            'SOAPAction'     : 'createFolder',
+            'Accept-Encoding': 'identity'
+          }, folderBuf);
+          log('REQ', 'CreateFolder status: ' + folderResult.status);
+          log('REQ', 'CreateFolder body: ' + folderResult.body);
 
-var dlBuf    = Buffer.from(downloadSoap, 'utf8');
-var dlParsed = url.parse(fusionUrl + '/xmlpserver/services/v2/CatalogService');
-var dlResult = await doRequest(dlParsed, 'POST', {
-  'Content-Type'   : 'text/xml; charset=UTF-8',
-  'Content-Length' : dlBuf.length,
-  'SOAPAction'     : 'downloadObject',
-  'Accept-Encoding': 'identity'
-}, dlBuf);
+          // ── Step 3: Upload Data Model ──────────────────────
+          log('REQ', 'Uploading data model...');
+          var dataModelXml = '<?xml version="1.0" encoding="utf-8"?>\n' +
+            '<dataModel xmlns="http://xmlns.oracle.com/oxp/xmlp" version="2.0" ' +
+            'xmlns:xdm="http://xmlns.oracle.com/oxp/xmlp" ' +
+            'xmlns:xsd="http://wwww.w3.org/2001/XMLSchema" ' +
+            'defaultDataSourceRef="CloudSQLDataModel">\n' +
+            '<description><![CDATA[QueryForgeDataZenDataModel_csv]]></description>\n' +
+            '<dataProperties>\n' +
+            '<property name="include_parameters" value="false"/>\n' +
+            '<property name="include_null_Element" value="false"/>\n' +
+            '<property name="include_rowsettag" value="false"/>\n' +
+            '<property name="xml_tag_case" value="upper"/>\n' +
+            '<property name="generate_output_format" value="xml"/>\n' +
+            '</dataProperties>\n' +
+            '<dataSets>\n' +
+            '<dataSet name="sqlResultsSet" type="simple">\n' +
+            '<sql dataSourceRef="CloudSQLDataModel" nsQuery="true" sp="true" xmlRowTagName="" bindMultiValueAsCommaSepStr="false">\n' +
+            '<![CDATA[DECLARE\n' +
+            '    type sys_refcursor is REF CURSOR;\n' +
+            '    xdo_cursor  sys_refcursor;\n' +
+            '    l_sql_query  RAW(32767);\n' +
+            '    var11       CLOB := \'\';\n' +
+            '    l_encoded_clob CLOB := :sql_query;\n' +
+            '    l_decoded_clob CLOB;\n' +
+            '    l_chunk_size INTEGER := 32000;\n' +
+            '    l_buffer VARCHAR2(32767);\n' +
+            '    l_pos INTEGER := 1;\n' +
+            '    l_length INTEGER := DBMS_LOB.getlength(l_encoded_clob);\n' +
+            'BEGIN\n' +
+            '    DBMS_LOB.createtemporary(l_decoded_clob, TRUE);\n' +
+            '    WHILE l_pos <= l_length LOOP\n' +
+            '        DBMS_LOB.READ(l_encoded_clob, l_chunk_size, l_pos, l_buffer);\n' +
+            '        l_sql_query := UTL_RAW.CAST_TO_RAW(l_buffer);\n' +
+            '        var11 := TO_CLOB(UTL_RAW.CAST_TO_VARCHAR2(UTL_ENCODE.BASE64_DECODE(l_sql_query)));\n' +
+            '        DBMS_LOB.writeappend(l_decoded_clob, LENGTH(var11), var11);\n' +
+            '        l_pos := l_pos + l_chunk_size;\n' +
+            '    END LOOP;\n' +
+            '    OPEN :xdo_cursor FOR l_decoded_clob;\n' +
+            '    DBMS_LOB.freetemporary(l_decoded_clob);\n' +
+            'END;]]>\n' +
+            '</sql>\n' +
+            '</dataSet>\n' +
+            '</dataSets>\n' +
+            '<output rootName="DATA_DS" uniqueRowName="false">\n' +
+            '<nodeList name="sqlResultsSet"/>\n' +
+            '</output>\n' +
+            '<eventTriggers/>\n' +
+            '<lexicals/>\n' +
+            '<parameters>\n' +
+            '<parameter name="sql_query" dataType="xsd:string" rowPlacement="1">\n' +
+            '<input label="sql_query"/>\n' +
+            '</parameter>\n' +
+            '<parameter name="xdo_cursor" dataType="xsd:string" rowPlacement="1">\n' +
+            '<input label="xdo_cursor"/>\n' +
+            '</parameter>\n' +
+            '</parameters>\n' +
+            '<valueSets/>\n' +
+            '<bursting/>\n' +
+            '</dataModel>';
 
-  log('REQ', 'Download status: ' + dlResult.status);
-  log('REQ', 'Download body: ' + dlResult.body);
- log('REQ', 'DataModel XML: ' + dataModelXml);
-// Extract base64 and decode to see actual XDM XML
-var b64Match = dlResult.body.match(/<.*?downloadObjectReturn[^>]*>([^<]+)<\/.*?downloadObjectReturn>/);
-if (b64Match) {
-  var decoded = Buffer.from(b64Match[1], 'base64');
-  //var JSZip = require('jszip');
-  var zip0 = await JSZip.loadAsync(decoded);
-  var files = Object.keys(zip0.files);
-  log('REQ', 'Files in zip: ' + files.join(', '));
-  for (var f of files) {
-    var content = await zip0.files[f].async('string');
-    log('REQ', 'File ' + f + ' content: ' + content);
-  }
-}
- 
-  // Minimal valid BIP data model XML
-var dataModelXml = '<?xml version="1.0" encoding="utf-8"?>\n' +
-  '<dataModel xmlns="http://xmlns.oracle.com/oxp/xmlp" version="2.0" ' +
-  'xmlns:xdm="http://xmlns.oracle.com/oxp/xmlp" ' +
-  'xmlns:xsd="http://wwww.w3.org/2001/XMLSchema" ' +
-  'defaultDataSourceRef="CloudSQLDataModel">\n' +
-  '<description><![CDATA[QueryForgeDataZenDataModel_csv]]></description>\n' +
-  '<dataProperties>\n' +
-  '<property name="include_parameters" value="false"/>\n' +
-  '<property name="include_null_Element" value="false"/>\n' +
-  '<property name="include_rowsettag" value="false"/>\n' +
-  '<property name="xml_tag_case" value="upper"/>\n' +
-  '<property name="generate_output_format" value="xml"/>\n' +
-  '</dataProperties>\n' +
-  '<dataSets>\n' +
-  '<dataSet name="sqlResultsSet" type="simple">\n' +
-  '<sql dataSourceRef="CloudSQLDataModel" nsQuery="true" sp="true" xmlRowTagName="" bindMultiValueAsCommaSepStr="false">\n' +
-  '<![CDATA[DECLARE\n' +
-  '    type sys_refcursor is REF CURSOR;\n' +
-  '    xdo_cursor  sys_refcursor;\n' +
-  '    l_sql_query  RAW(32767);\n' +
-  '    var11       CLOB := \'\';\n' +
-  '    l_encoded_clob CLOB := :sql_query;\n' +
-  '    l_decoded_clob CLOB;\n' +
-  '    l_chunk_size INTEGER := 32000;\n' +
-  '    l_buffer VARCHAR2(32767);\n' +
-  '    l_pos INTEGER := 1;\n' +
-  '    l_length INTEGER := DBMS_LOB.getlength(l_encoded_clob);\n' +
-  'BEGIN\n' +
-  '    DBMS_LOB.createtemporary(l_decoded_clob, TRUE);\n' +
-  '    WHILE l_pos <= l_length LOOP\n' +
-  '        DBMS_LOB.READ(l_encoded_clob, l_chunk_size, l_pos, l_buffer);\n' +
-  '        l_sql_query := UTL_RAW.CAST_TO_RAW(l_buffer);\n' +
-  '        var11 := TO_CLOB(UTL_RAW.CAST_TO_VARCHAR2(UTL_ENCODE.BASE64_DECODE(l_sql_query)));\n' +
-  '        DBMS_LOB.writeappend(l_decoded_clob, LENGTH(var11), var11);\n' +
-  '        l_pos := l_pos + l_chunk_size;\n' +
-  '    END LOOP;\n' +
-  '    OPEN :xdo_cursor FOR l_decoded_clob;\n' +
-  '    DBMS_LOB.freetemporary(l_decoded_clob);\n' +
-  'END;]]>\n' +
-  '</sql>\n' +
-  '</dataSet>\n' +
-  '</dataSets>\n' +
-  '<output rootName="DATA_DS" uniqueRowName="false">\n' +
-  '<nodeList name="sqlResultsSet"/>\n' +
-  '</output>\n' +
-  '<eventTriggers/>\n' +
-  '<lexicals/>\n' +
-  '<parameters>\n' +
-  '<parameter name="sql_query" dataType="xsd:string" rowPlacement="1">\n' +
-  '<input label="sql_query"/>\n' +
-  '</parameter>\n' +
-  '<parameter name="xdo_cursor" dataType="xsd:string" rowPlacement="1">\n' +
-  '<input label="xdo_cursor"/>\n' +
-  '</parameter>\n' +
-  '</parameters>\n' +
-  '<valueSets/>\n' +
-  '<bursting/>\n' +
-  '</dataModel>';
-  
+          var zip1 = new JSZip();
+          zip1.file('QueryForgeDataZenDataModel_csv.xdm', dataModelXml);
+          var dmZipped = await zip1.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+          var dmB64    = dmZipped.toString('base64');
+          var dmResult = await uploadBIPObject(fusionUrl, username, password, 'xdmz',
+            '/Custom/QueryForgeDataZen/QueryForgeDataZenDataModel_csv', dmB64);
+          log('REQ', 'UploadDM status: ' + dmResult.status);
+          log('REQ', 'UploadDM body: ' + dmResult.body);
 
-// Zip the data model XML first
- 
-var zip = new JSZip();
-zip.file('QueryForgeDataZenDataModel_csv.xdm', dataModelXml);
-var dataModelZipped = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
-var dataModelB64 = dataModelZipped.toString('base64');
-  
- var uploadSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
-  '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v2="http://xmlns.oracle.com/oxp/service/v2">' +
-  '<soapenv:Header/>' +
-  '<soapenv:Body>' +
-  '<v2:uploadObject>' +
-  '<v2:userID>' + username + '</v2:userID>' +
-  '<v2:password>' + password + '</v2:password>' +
-  '<v2:objectType>xdmz</v2:objectType>' +
-  '<v2:reportObjectAbsolutePathURL>/Custom/TestFolder/QueryForgeDataZenDataModel_csv.xdm</v2:reportObjectAbsolutePathURL>' +
-  '<v2:objectZippedData>' + dataModelB64 + '</v2:objectZippedData>' +
-  '</v2:uploadObject>' +
-  '</soapenv:Body>' +
-  '</soapenv:Envelope>';
+          // ── Step 4: Upload Report ──────────────────────────
+          log('REQ', 'Uploading report...');
+          var reportXml = '<?xml version="1.0" encoding="utf-8"?>\n' +
+            '<report xmlns="http://xmlns.oracle.com/oxp/xmlp" version="2.0">\n' +
+            '<description><![CDATA[QueryForgeDataZenReport_csv]]></description>\n' +
+            '<dataModelReference>/Custom/QueryForgeDataZen/QueryForgeDataZenDataModel_csv.xdm</dataModelReference>\n' +
+            '<defaultOutputFormat>csv</defaultOutputFormat>\n' +
+            '<defaultTemplate>blank</defaultTemplate>\n' +
+            '<templates>\n' +
+            '<template>\n' +
+            '<name>blank</name>\n' +
+            '<file>blank.xpt</file>\n' +
+            '<outputFormat>csv</outputFormat>\n' +
+            '<defaultOutput>true</defaultOutput>\n' +
+            '<type>xpt</type>\n' +
+            '<locale>en-US</locale>\n' +
+            '</template>\n' +
+            '</templates>\n' +
+            '</report>';
 
-  try {
-    var folderBuf    = Buffer.from(uploadSoap, 'utf8');
-    var folderParsed = url.parse(fusionUrl + '/xmlpserver/services/v2/CatalogService');
-    var result = await doRequest(folderParsed, 'POST', {
-      'Content-Type'   : 'text/xml; charset=UTF-8',
-      'Content-Length' : folderBuf.length,
-      'SOAPAction'     : 'uploadObject',
-      'Accept-Encoding': 'identity'
-    }, folderBuf);
+          var zip2 = new JSZip();
+          zip2.file('QueryForgeDataZenReport_csv.xdo', reportXml);
+          var rptZipped = await zip2.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+          var rptB64    = rptZipped.toString('base64');
+          var rptResult = await uploadBIPObject(fusionUrl, username, password, 'xdoz',
+            '/Custom/QueryForgeDataZen/QueryForgeDataZenReport_csv', rptB64);
+          log('REQ', 'UploadReport status: ' + rptResult.status);
+          log('REQ', 'UploadReport body: ' + rptResult.body);
 
-    lastStatus = result.status;
-    lastBody   = result.body;
-    log('REQ', 'UploadObject status: ' + lastStatus);
-    log('REQ', 'UploadObject body: ' + lastBody);
+          // ── Step 5: Upload Blank Template ─────────────────
+          log('REQ', 'Uploading template...');
+          var templateXml = '<?xml version="1.0" encoding="utf-8"?>\n' +
+            '<xsl:stylesheet version="1.0" ' +
+            'xmlns:xsl="http://www.w3.org/1999/XSL/Transform">\n' +
+            '<xsl:output method="text" encoding="utf-8"/>\n' +
+            '<xsl:template match="/">\n' +
+            '<xsl:for-each select="//ROW">\n' +
+            '<xsl:value-of select="."/>\n' +
+            '</xsl:for-each>\n' +
+            '</xsl:template>\n' +
+            '</xsl:stylesheet>';
 
-    if (lastStatus === 200 && !lastBody.includes('Fault')) {
-      uploaded = true;
-    }
-  } catch(e) {
-    log('ERR', 'UploadObject error: ' + e.message);
-    lastBody = e.message;
-  }
-}
+          var zip3 = new JSZip();
+          zip3.file('blank.xpt', templateXml);
+          var tplZipped = await zip3.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+          var tplB64    = tplZipped.toString('base64');
+          var tplResult = await uploadBIPObject(fusionUrl, username, password, 'xssz',
+            '/Custom/QueryForgeDataZen/QueryForgeDataZenReport_csv/blank', tplB64);
+          log('REQ', 'UploadTemplate status: ' + tplResult.status);
+          log('REQ', 'UploadTemplate body: ' + tplResult.body);
+
+          lastStatus = tplResult.status;
+          lastBody   = tplResult.body;
+
+          if (dmResult.status === 200 && !dmResult.body.includes('Fault') &&
+              rptResult.status === 200 && !rptResult.body.includes('Fault') &&
+              tplResult.status === 200 && !tplResult.body.includes('Fault')) {
+            uploaded = true;
+          }
+
+        } catch(e) {
+          log('ERR', 'Error: ' + e.message);
+          lastBody = e.message;
+        }
+
+      } else {
+        lastStatus = 401;
+        lastBody = 'Could not obtain session token — check credentials';
+      }
 
       if (uploaded) {
-        log('OK', 'Folder created — HTTP ' + lastStatus);
+        log('OK', 'All objects deployed successfully');
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, message: 'Folder created successfully', status: lastStatus }));
+        res.end(JSON.stringify({ ok: true, message: 'Deployed successfully', status: lastStatus }));
       } else {
         log('ERR', 'Failed — last status: ' + lastStatus);
         res.writeHead(lastStatus || 502, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: false, message: 'Fusion returned HTTP ' + lastStatus, detail: lastBody, status: lastStatus }));
+        res.end(JSON.stringify({ ok: false, message: 'Failed', detail: lastBody, status: lastStatus }));
       }
     });
   }
