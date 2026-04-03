@@ -2,7 +2,8 @@ const http  = require('http');
 const https = require('https');
 const url   = require('url');
 const zlib = require('zlib');
- var JSZip = require('jszip');
+var JSZip = require('jszip');
+if (JSZip.default) JSZip = JSZip.default;
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -372,7 +373,7 @@ log('REQ', 'Download status: ' + dlResult.status);
 var b64Match = dlResult.body.match(/<.*?downloadObjectReturn[^>]*>([^<]+)<\/.*?downloadObjectReturn>/);
 if (b64Match) {
   var decoded = Buffer.from(b64Match[1], 'base64');
-  var JSZip = require('jszip');
+  //var JSZip = require('jszip');
   var zip0 = await JSZip.loadAsync(decoded);
   var files = Object.keys(zip0.files);
   log('REQ', 'Files in zip: ' + files.join(', '));
