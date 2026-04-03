@@ -344,7 +344,7 @@ var server = http.createServer(function(req, res) {
   '<soapenv:Body>' +
   '<saw:getSubItems>' +
   '<saw:path>/</saw:path>' +
-  '<saw:filter>*</saw:filter>' +
+  '<saw:mask>*</saw:mask>' +
   '<saw:recursive>false</saw:recursive>' +
   '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
   '</saw:getSubItems>' +
