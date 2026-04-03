@@ -350,7 +350,7 @@ var server = http.createServer(function(req, res) {
   '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
   '<soapenv:Body>' +
   '<saw:unarchive>' +
-  '<saw:archiveData>' + CATALOG_B64 + '</saw:archiveData>' +
+  '<saw:archive>' + CATALOG_B64 + '</saw:archive>' +
   '<saw:targetPath>' + uploadPath + '</saw:targetPath>' +
   '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
   '</saw:unarchive>' +
