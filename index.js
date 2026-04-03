@@ -346,6 +346,7 @@ var server = http.createServer(function(req, res) {
 
       // Step 2: Use session to unarchive catalog
       if (sessionID) {
+        log('REQ', 'Upload path: ' + uploadPath);
         var unarchiveSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
   '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
   '<soapenv:Body>' +
@@ -365,7 +366,7 @@ var server = http.createServer(function(req, res) {
           var result = await doRequest(unarchiveParsed, 'POST', {
             'Content-Type'   : 'text/xml; charset=UTF-8',
             'Content-Length' : unarchiveBuf.length,
-            'SOAPAction'     : 'unarchiveCatalogObject',
+            'SOAPAction'     : 'unarchive',
             'Accept-Encoding': 'identity'
           }, unarchiveBuf);
 
