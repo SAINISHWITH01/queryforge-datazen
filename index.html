@@ -1116,7 +1116,7 @@ async function deleteConn(i){
       await fetch(PROXY_URL+'/connections/'+conn.id,{method:'DELETE'});
     }catch(e){console.warn('Server delete failed',e);}
   }
-  connections.splice(i,1);saveConns();renderConnSel();renderSavedConns();
+  connections.splice(i,1);saveConns();renderConnSel();renderSavedConns();checkBanner();
   if(activeConn&&!connections.includes(activeConn)){activeConn=null;setStatus('','Not connected');document.getElementById('title-conn').textContent='No connection selected';}
 }
 function openConnModal(){document.getElementById('conn-overlay').classList.add('show');setMStatus('','');}
