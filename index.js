@@ -358,8 +358,11 @@ if (sessionID) {
     '<bursting/>' +
     '</dataModel>';
 
-  var dataModelB64 = Buffer.from(dataModelXml).toString('base64');
-
+// Zip the data model XML first
+  var zlib = require('zlib');
+  var dataModelZipped = zlib.gzipSync(Buffer.from(dataModelXml));
+  var dataModelB64 = dataModelZipped.toString('base64');
+  
  var uploadSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
   '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v2="http://xmlns.oracle.com/oxp/service/v2">' +
   '<soapenv:Header/>' +
@@ -367,7 +370,7 @@ if (sessionID) {
   '<v2:uploadObject>' +
   '<v2:userID>' + username + '</v2:userID>' +
   '<v2:password>' + password + '</v2:password>' +
-  '<v2:objectType>xdm</v2:objectType>' +
+  '<v2:objectType>xdmz</v2:objectType>' +
   '<v2:reportObjectAbsolutePathURL>/Custom/SampleDataModel.xdm</v2:reportObjectAbsolutePathURL>' +
   '<v2:objectZippedData>' + dataModelB64 + '</v2:objectZippedData>' +
   '</v2:uploadObject>' +
