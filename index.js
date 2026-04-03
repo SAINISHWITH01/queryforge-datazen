@@ -320,47 +320,34 @@ var server = http.createServer(function(req, res) {
         log('ERR', 'Could not get session cookie: ' + e.message);
       }
 
-      for (var ei = 0; ei < endpoints.length; ei++) {
+    for (var ei = 0; ei < endpoints.length; ei++) {
         var apiPath = endpoints[ei];
         log('REQ', 'Trying → ' + parsedFusion.hostname + apiPath);
 
-       try {
+        try {
           var apiParsed = url.parse(fusionUrl + apiPath);
           var result = await doRequest(apiParsed, 'POST', {
             'Authorization'  : basicAuth,
             'Content-Type'   : 'application/octet-stream',
             'Content-Length' : catalogBuf.length,
             'Accept'         : 'application/json',
-            'X-Requested-By' : 'XMLHttpRequest',
-            'Cookie'         : cookieStr
+            'X-Requested-By' : 'XMLHttpRequest'
           }, catalogBuf);
 
           lastStatus = result.status;
           lastBody   = result.body;
+          log('REQ', 'Response status: ' + lastStatus);
+          log('REQ', 'Response body: ' + lastBody.substring(0, 300));
 
-          // Follow one level of redirect (302/301) — carry auth along
+          // Oracle redirects to login page when auth fails — treat as 401
           if ((result.status === 301 || result.status === 302 || result.status === 303) && result.headers['location']) {
             var redirectUrl = result.headers['location'];
             log('REQ', 'Following redirect → ' + redirectUrl);
-
-            // Oracle redirects to login page when auth fails — treat as 401
             if (redirectUrl.includes('AtkHomePageWelcome') || redirectUrl.includes('login') || redirectUrl.includes('faces')) {
               lastStatus = 401;
               lastBody = 'Authentication failed — invalid credentials or insufficient privileges';
               break;
             }
-
-            var parsedRedirect = url.parse(redirectUrl);
-            result = await doRequest(parsedRedirect, 'POST', {
-              'Authorization'  : basicAuth,
-              'Content-Type'   : 'application/octet-stream',
-              'Content-Length' : catalogBuf.length,
-              'Accept'         : 'application/json',
-              'X-Requested-By' : 'XMLHttpRequest',
-              'Cookie'         : cookieStr
-            }, catalogBuf);
-            lastStatus = result.status;
-            lastBody   = result.body;
           }
 
           if (lastStatus === 200 || lastStatus === 201 || lastStatus === 204) {
@@ -368,7 +355,6 @@ var server = http.createServer(function(req, res) {
             break;
           }
 
-          // 401/403 = wrong credentials — no point trying next endpoint
           if (lastStatus === 401 || lastStatus === 403) break;
 
         } catch(e) {
