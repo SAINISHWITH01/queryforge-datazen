@@ -975,7 +975,7 @@ window.onload=function(){
     document.getElementById('titlebar-username').textContent=session.name||session.username;
     document.getElementById('titlebar-user').style.display='flex';
   }
-  loadConns();
+  loadConns(); // checkBanner() is called inside loadConns() after connections are loaded
   addTab();
   renderTabs();
   activateTab(0);
@@ -987,7 +987,6 @@ window.onload=function(){
   ta.addEventListener('click',updatePos);
   initResizer();
   doHL();doLN();
-  checkBanner();
   setTimeout(function(){checkProxy(function(){});},500);
   // Close filter popup on outside click
   document.addEventListener('mousedown',function(e){
@@ -1048,18 +1047,22 @@ function getCurrentUserId(){
 }
 
 function doLogout(){
+  // Clear the per-user connections cache before logging out
+  var uid=getCurrentUserId();
+  if(uid){localStorage.removeItem('csWebConns_u'+uid);}
   sessionStorage.removeItem('qfdz_session');
   localStorage.removeItem('qfdz_session');
-  localStorage.removeItem('csWebConns');
   window.location.href='https://queryforge-datazen.vercel.app/login.html';
 }
 
 async function loadConns(){
   var uid=getCurrentUserId();
+  // Per-user localStorage key prevents cross-account connection leakage
+  var localKey=uid?'csWebConns_u'+uid:'csWebConns_guest';
   if(!uid){
-    // fallback to localStorage for unauthenticated use
-    try{connections=JSON.parse(localStorage.getItem('csWebConns')||'[]');}catch(e){connections=[];}
-    renderConnSel();renderSavedConns();return;
+    // Unauthenticated: use guest-scoped local key
+    try{connections=JSON.parse(localStorage.getItem(localKey)||'[]');}catch(e){connections=[];}
+    renderConnSel();renderSavedConns();checkBanner();return;
   }
   try{
     var r=await fetch(PROXY_URL+'/connections?user_id='+encodeURIComponent(uid));
@@ -1069,12 +1072,17 @@ async function loadConns(){
     });
   }catch(e){
     console.warn('Could not fetch connections from server, using localStorage fallback',e);
-    try{connections=JSON.parse(localStorage.getItem('csWebConns')||'[]');}catch(e2){connections=[];}
+    // Fallback still uses per-user key — never shows another user's connections
+    try{connections=JSON.parse(localStorage.getItem(localKey)||'[]');}catch(e2){connections=[];}
   }
-  renderConnSel();renderSavedConns();
+  renderConnSel();renderSavedConns();checkBanner();
 }
 
-function saveConns(){try{localStorage.setItem('csWebConns',JSON.stringify(connections));}catch(e){}}
+function saveConns(){
+  var uid=getCurrentUserId();
+  var localKey=uid?'csWebConns_u'+uid:'csWebConns_guest';
+  try{localStorage.setItem(localKey,JSON.stringify(connections));}catch(e){}
+}
 function renderConnSel(){
   var sel=document.getElementById('csel'),cur=sel.value;
   sel.innerHTML='<option value="">— Select a connection —</option>';
