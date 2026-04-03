@@ -304,49 +304,64 @@ var server = http.createServer(function(req, res) {
         });
       }
 
-    var uploadPath = '/Custom/';
+    var uploadPath = '/Shared Folders/Custom/';
 
       var lastStatus = 0;
       var lastBody   = '';
       var uploaded   = false;
 
-      // Oracle Fusion Cloud CatalogService v2 — correct API for upload
-      var soapEnvelope = '<?xml version="1.0" encoding="UTF-8"?>' +
-        '<x:Envelope xmlns:x="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v="http://xmlns.oracle.com/oxp/service/v2">' +
-        '<x:Header/>' +
-        '<x:Body>' +
-        '<v:uploadObject>' +
-        '<v:reportObjectAbsolutePathURL>' + uploadPath + '</v:reportObjectAbsolutePathURL>' +
-        '<v:objectType>xdoz</v:objectType>' +
-        '<v:objectZippedData>' + CATALOG_B64 + '</v:objectZippedData>' +
-        '<v:userID>' + username + '</v:userID>' +
-        '<v:password>' + password + '</v:password>' +
-        '</v:uploadObject>' +
-        '</x:Body>' +
-        '</x:Envelope>';
+      // Oracle OTBI uses saw.dll multipart form POST for unarchive
+      var boundary = '----FormBoundary' + Date.now();
+      var catalogBytes = catalogBuf;
 
-      var soapBuf = Buffer.from(soapEnvelope, 'utf8');
+      var formParts = [];
+      formParts.push(
+        '--' + boundary + '\r\n' +
+        'Content-Disposition: form-data; name="repl"\r\n\r\n' +
+        'none\r\n'
+      );
+      formParts.push(
+        '--' + boundary + '\r\n' +
+        'Content-Disposition: form-data; name="acl"\r\n\r\n' +
+        'inherit\r\n'
+      );
+      formParts.push(
+        '--' + boundary + '\r\n' +
+        'Content-Disposition: form-data; name="path"\r\n\r\n' +
+        uploadPath + '\r\n'
+      );
+      formParts.push(
+        '--' + boundary + '\r\n' +
+        'Content-Disposition: form-data; name="file"; filename="QueryForgeDataZen.catalog"\r\n' +
+        'Content-Type: application/octet-stream\r\n\r\n'
+      );
+
+      var preFileBuffer  = Buffer.from(formParts.join(''), 'utf8');
+      var postFileBuffer = Buffer.from('\r\n--' + boundary + '--\r\n', 'utf8');
+      var formBuffer     = Buffer.concat([preFileBuffer, catalogBytes, postFileBuffer]);
 
       try {
-        var soapParsed = url.parse(fusionUrl + '/xmlpserver/services/v2/CatalogService');
-        var result = await doRequest(soapParsed, 'POST', {
-          'Content-Type'   : 'text/xml; charset=UTF-8',
-          'Content-Length' : soapBuf.length,
-          'SOAPAction'     : 'uploadObject',
-          'Accept-Encoding': 'identity'
-        }, soapBuf);
+        var sawParsed = url.parse(fusionUrl + '/analytics/saw.dll?unarchiveCatalog');
+        var result = await doRequest(sawParsed, 'POST', {
+          'Authorization'  : basicAuth,
+          'Content-Type'   : 'multipart/form-data; boundary=' + boundary,
+          'Content-Length' : formBuffer.length,
+          'Accept'         : 'text/html,application/json',
+          'Accept-Encoding': 'identity',
+          'X-Requested-By' : 'XMLHttpRequest'
+        }, formBuffer);
 
         lastStatus = result.status;
         lastBody   = result.body;
-        log('REQ', 'SOAP status: ' + lastStatus);
-        log('REQ', 'SOAP body: ' + lastBody);
+        log('REQ', 'SAW status: ' + lastStatus);
+        log('REQ', 'SAW body: ' + lastBody.substring(0, 500));
 
-        if (lastStatus === 200 && !lastBody.includes('Fault')) {
+        if (lastStatus === 200 && !lastBody.includes('error') && !lastBody.includes('Error')) {
           uploaded = true;
         }
 
       } catch(e) {
-        log('ERR', 'SOAP error: ' + e.message);
+        log('ERR', 'SAW error: ' + e.message);
         lastBody = e.message;
       }
 
