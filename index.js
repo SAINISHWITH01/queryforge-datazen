@@ -415,7 +415,7 @@ var dataModelB64 = dataModelZipped.toString('base64');
   '<v2:userID>' + username + '</v2:userID>' +
   '<v2:password>' + password + '</v2:password>' +
   '<v2:objectType>xdmz</v2:objectType>' +
-  '<v2:reportObjectAbsolutePathURL>/Custom/TestFolder/QueryForgeDataZenDataModel_csv</v2:reportObjectAbsolutePathURL>' +
+  '<v2:reportObjectAbsolutePathURL>/Custom/TestFolder/QueryForgeDataZenDataModel_csv.xdm</v2:reportObjectAbsolutePathURL>' +
   '<v2:objectZippedData>' + dataModelB64 + '</v2:objectZippedData>' +
   '</v2:uploadObject>' +
   '</soapenv:Body>' +
