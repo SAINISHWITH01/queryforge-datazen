@@ -368,7 +368,7 @@ var dlResult = await doRequest(dlParsed, 'POST', {
 
   log('REQ', 'Download status: ' + dlResult.status);
   log('REQ', 'Download body: ' + dlResult.body);
-
+ log('REQ', 'DataModel XML: ' + dataModelXml);
 // Extract base64 and decode to see actual XDM XML
 var b64Match = dlResult.body.match(/<.*?downloadObjectReturn[^>]*>([^<]+)<\/.*?downloadObjectReturn>/);
 if (b64Match) {
