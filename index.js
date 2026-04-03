@@ -2,6 +2,7 @@ const http  = require('http');
 const https = require('https');
 const url   = require('url');
 const zlib = require('zlib');
+ var JSZip = require('jszip');
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -344,24 +345,37 @@ if (sessionID) {
 
   // Minimal valid BIP data model XML
   var dataModelXml = '<?xml version="1.0" encoding="UTF-8"?>' +
-    '<dataModel xmlns="http://xmlns.oracle.com/oxp/datamodel" version="2.0">' +
-    '<description><![CDATA[Sample Data Model]]></description>' +
-    '<dataProperties>' +
-    '<property name="xmlRowTagName" value="ROW"/>' +
-    '<property name="groupBySource" value="false"/>' +
-    '</dataProperties>' +
-    '<dataSets/>' +
-    '<eventTriggers/>' +
-    '<flexFields/>' +
-    '<valueSets/>' +
-    '<parameters/>' +
-    '<bursting/>' +
-    '</dataModel>';
+  '<dataModel xmlns="http://xmlns.oracle.com/oxp/datamodel" ' +
+  'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
+  'xsi:schemaLocation="http://xmlns.oracle.com/oxp/datamodel dataModel.xsd" ' +
+  'version="2.0" defaultDataSourceRef="demo">' +
+  '<description><![CDATA[Sample Data Model]]></description>' +
+  '<dataProperties>' +
+  '<property name="xmlRowTagName" value="ROW"/>' +
+  '<property name="groupBySource" value="false"/>' +
+  '<property name="includeRowsettag" value="true"/>' +
+  '<property name="returnFormat" value="xml"/>' +
+  '</dataProperties>' +
+  '<dataSets>' +
+  '<dataSet name="DataSet1" type="simple">' +
+  '<sql dataSourceRef="ApplicationDB_HCM">' +
+  '<![CDATA[SELECT 1 AS SAMPLE_COL FROM DUAL]]>' +
+  '</sql>' +
+  '</dataSet>' +
+  '</dataSets>' +
+  '<eventTriggers/>' +
+  '<flexFields/>' +
+  '<valueSets/>' +
+  '<parameters/>' +
+  '<bursting/>' +
+  '</dataModel>';
 
 // Zip the data model XML first
-  var zlib = require('zlib');
-  var dataModelZipped = zlib.gzipSync(Buffer.from(dataModelXml));
-  var dataModelB64 = dataModelZipped.toString('base64');
+ 
+var zip = new JSZip();
+zip.file('SampleDataModel.xdm', dataModelXml);
+var dataModelZipped = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+var dataModelB64 = dataModelZipped.toString('base64');
   
  var uploadSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
   '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v2="http://xmlns.oracle.com/oxp/service/v2">' +
