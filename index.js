@@ -324,8 +324,9 @@ var server = http.createServer(function(req, res) {
         var apiPath = endpoints[ei];
         log('REQ', 'Trying → ' + parsedFusion.hostname + apiPath);
 
-        try {
-          var result = await doRequest(parsedFusion, 'POST', {
+       try {
+          var apiParsed = url.parse(fusionUrl + apiPath);
+          var result = await doRequest(apiParsed, 'POST', {
             'Authorization'  : basicAuth,
             'Content-Type'   : 'application/octet-stream',
             'Content-Length' : catalogBuf.length,
