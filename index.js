@@ -327,7 +327,8 @@ var server = http.createServer(function(req, res) {
         var authCookie = pingResult.headers['set-cookie'];
         cookieStr = authCookie ? authCookie.map(function(c) { return c.split(';')[0]; }).join('; ') : '';
         log('REQ', 'Session cookie: ' + (cookieStr ? 'yes' : 'none'));
-        log('REQ', 'Ping body: ' + pingResult.body.substring(0, 300));
+        //log('REQ', 'Ping body: ' + pingResult.body.substring(0, 300));
+        log('REQ', 'Ping body: ' + pingResult.body);
       } catch(e) {
         log('ERR', 'Ping failed: ' + e.message);
       }
@@ -351,8 +352,8 @@ var server = http.createServer(function(req, res) {
           lastStatus = result.status;
           lastBody   = result.body;
           log('REQ', 'Response status: ' + lastStatus);
-          log('REQ', 'Response body: ' + lastBody.substring(0, 300));
-
+          //log('REQ', 'Response body: ' + lastBody.substring(0, 300));
+          log('REQ', 'Response body: ' + lastBody);
           if ((result.status === 301 || result.status === 302 || result.status === 303) && result.headers['location']) {
             var redirectUrl = result.headers['location'];
             log('REQ', 'Redirect → ' + redirectUrl);
