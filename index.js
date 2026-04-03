@@ -304,75 +304,49 @@ var server = http.createServer(function(req, res) {
         });
       }
 
-      var uploadPath = '/Shared Folders/Custom/';
-      var endpoints = [
-        '/xmlpserver/services/rest/v1/catalog/uploadArchive?path=' + encodeURIComponent(uploadPath) + '&overwrite=true'
-      ];
+     var uploadPath = '/Shared Folders/Custom/';
 
       var lastStatus = 0;
       var lastBody   = '';
       var uploaded   = false;
 
-      // Step 1: Get OAM session cookie via xmlpserver ping
-      var cookieStr = '';
+      // Oracle Fusion Cloud uses SOAP for BIP catalog operations
+      var soapEnvelope = '<?xml version="1.0" encoding="UTF-8"?>' +
+        '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:pub="http://xmlns.oracle.com/oxp/service/PublicReportService">' +
+        '<soapenv:Header/>' +
+        '<soapenv:Body>' +
+        '<pub:uploadRepository>' +
+        '<pub:reportRepository>' + CATALOG_B64 + '</pub:reportRepository>' +
+        '<pub:path>' + uploadPath + '</pub:path>' +
+        '<pub:overwrite>true</pub:overwrite>' +
+        '</pub:uploadRepository>' +
+        '</soapenv:Body>' +
+        '</soapenv:Envelope>';
+
+      var soapBuf = Buffer.from(soapEnvelope, 'utf8');
+
       try {
-        var pingParsed = url.parse(fusionUrl + '/xmlpserver/services/rest/v1/catalog');
-        var pingResult = await doRequest(pingParsed, 'GET', {
+        var soapParsed = url.parse(fusionUrl + '/xmlpserver/services/PublicReportService');
+        var result = await doRequest(soapParsed, 'POST', {
           'Authorization'  : basicAuth,
-          'X-Requested-By' : 'XMLHttpRequest',
-          'Accept'         : 'application/json',
+          'Content-Type'   : 'text/xml; charset=UTF-8',
+          'Content-Length' : soapBuf.length,
+          'SOAPAction'     : 'uploadRepository',
           'Accept-Encoding': 'identity'
-        }, null);
-        log('REQ', 'Ping status: ' + pingResult.status);
-        var authCookie = pingResult.headers['set-cookie'];
-        cookieStr = authCookie ? authCookie.map(function(c) { return c.split(';')[0]; }).join('; ') : '';
-        log('REQ', 'Session cookie: ' + (cookieStr ? 'yes' : 'none'));
-        //log('REQ', 'Ping body: ' + pingResult.body.substring(0, 300));
-        log('REQ', 'Ping body: ' + pingResult.body);
-      } catch(e) {
-        log('ERR', 'Ping failed: ' + e.message);
-      }
+        }, soapBuf);
 
-      for (var ei = 0; ei < endpoints.length; ei++) {
-        var apiPath = endpoints[ei];
-        log('REQ', 'Trying → ' + parsedFusion.hostname + apiPath);
+        lastStatus = result.status;
+        lastBody   = result.body;
+        log('REQ', 'SOAP status: ' + lastStatus);
+        log('REQ', 'SOAP body: ' + lastBody);
 
-        try {
-          var apiParsed = url.parse(fusionUrl + apiPath);
-          var result = await doRequest(apiParsed, 'POST', {
-            'Authorization'  : basicAuth,
-            'Content-Type'   : 'application/octet-stream',
-            'Content-Length' : catalogBuf.length,
-            'Accept'         : 'application/json',
-            'X-Requested-By' : 'XMLHttpRequest',
-            'Accept-Encoding': 'identity',
-            'Cookie'         : cookieStr
-          }, catalogBuf);
-
-          lastStatus = result.status;
-          lastBody   = result.body;
-          log('REQ', 'Response status: ' + lastStatus);
-          //log('REQ', 'Response body: ' + lastBody.substring(0, 300));
-          log('REQ', 'Response body: ' + lastBody);
-          if ((result.status === 301 || result.status === 302 || result.status === 303) && result.headers['location']) {
-            var redirectUrl = result.headers['location'];
-            log('REQ', 'Redirect → ' + redirectUrl);
-            lastStatus = 401;
-            lastBody = 'Authentication failed — Oracle redirected to: ' + redirectUrl;
-            break;
-          }
-
-          if (lastStatus === 200 || lastStatus === 201 || lastStatus === 204) {
-            uploaded = true;
-            break;
-          }
-
-          if (lastStatus === 401 || lastStatus === 403) break;
-
-        } catch(e) {
-          log('ERR', 'Request error: ' + e.message);
-          lastBody = e.message;
+        if (lastStatus === 200 && !lastBody.includes('Fault')) {
+          uploaded = true;
         }
+
+      } catch(e) {
+        log('ERR', 'SOAP error: ' + e.message);
+        lastBody = e.message;
       }
 
       if (uploaded) {
