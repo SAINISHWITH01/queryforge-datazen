@@ -323,7 +323,8 @@ var server = http.createServer(function(req, res) {
       var sessionID = '';
       try {
         var loginBuf    = Buffer.from(loginSoap, 'utf8');
-        var loginParsed = url.parse(fusionUrl + '/analytics/saw.dll?SoapImpl=nQSessionService');
+       // var loginParsed = url.parse(fusionUrl + '/analytics/saw.dll?SoapImpl=nQSessionService');
+        var loginParsed = url.parse(fusionUrl + '/analytics-ws/saw.dll?SoapImpl=nQSessionService');
         var loginResult = await doRequest(loginParsed, 'POST', {
           'Content-Type'   : 'text/xml; charset=UTF-8',
           'Content-Length' : loginBuf.length,
@@ -358,7 +359,8 @@ var server = http.createServer(function(req, res) {
 
         try {
           var unarchiveBuf    = Buffer.from(unarchiveSoap, 'utf8');
-          var unarchiveParsed = url.parse(fusionUrl + '/analytics/saw.dll?SoapImpl=catalogService');
+          //var unarchiveParsed = url.parse(fusionUrl + '/analytics/saw.dll?SoapImpl=catalogService');
+          var unarchiveParsed = url.parse(fusionUrl + '/analytics-ws/saw.dll?SoapImpl=catalogService');
           var result = await doRequest(unarchiveParsed, 'POST', {
             'Content-Type'   : 'text/xml; charset=UTF-8',
             'Content-Length' : unarchiveBuf.length,
