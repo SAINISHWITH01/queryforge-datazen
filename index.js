@@ -304,7 +304,7 @@ var server = http.createServer(function(req, res) {
         });
       }
 
-      var uploadPath = '/shared/Custom/';
+      var uploadPath = '/Shared Folders/Custom/';
       var endpoints = [
         '/xmlpserver/services/rest/v1/catalog/uploadArchive?path=' + encodeURIComponent(uploadPath) + '&overwrite=true'
       ];
