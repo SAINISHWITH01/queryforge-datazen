@@ -294,27 +294,30 @@ var server = http.createServer(function(req, res) {
         });
       }
 
-      // Try both known Oracle OTBI/BIP upload endpoints
       var uploadPath = '/shared/Custom/';
-      // Only use xmlpserver endpoint — analytics/pub/v1 requires OAuth
       var endpoints = [
         '/xmlpserver/services/rest/v1/catalog/uploadArchive?path=' + encodeURIComponent(uploadPath) + '&overwrite=true'
       ];
+
+      var lastStatus = 0;
+      var lastBody   = '';
+      var uploaded   = false;
 
       // Step 1: Get OAM session cookie via xmlpserver ping
       var cookieStr = '';
       try {
         var pingParsed = url.parse(fusionUrl + '/xmlpserver/services/rest/v1/catalog');
         var pingResult = await doRequest(pingParsed, 'GET', {
-          'Authorization' : basicAuth,
-          'X-Requested-By': 'XMLHttpRequest',
-          'Accept'        : 'application/json'
+          'Authorization'  : basicAuth,
+          'X-Requested-By' : 'XMLHttpRequest',
+          'Accept'         : 'application/json',
+          'Accept-Encoding': 'identity'
         }, null);
         log('REQ', 'Ping status: ' + pingResult.status);
         var authCookie = pingResult.headers['set-cookie'];
         cookieStr = authCookie ? authCookie.map(function(c) { return c.split(';')[0]; }).join('; ') : '';
         log('REQ', 'Session cookie: ' + (cookieStr ? 'yes' : 'none'));
-        log('REQ', 'Ping body: ' + pingResult.body.substring(0, 200));
+        log('REQ', 'Ping body: ' + pingResult.body.substring(0, 300));
       } catch(e) {
         log('ERR', 'Ping failed: ' + e.message);
       }
@@ -331,6 +334,7 @@ var server = http.createServer(function(req, res) {
             'Content-Length' : catalogBuf.length,
             'Accept'         : 'application/json',
             'X-Requested-By' : 'XMLHttpRequest',
+            'Accept-Encoding': 'identity',
             'Cookie'         : cookieStr
           }, catalogBuf);
 
