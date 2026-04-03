@@ -246,7 +246,8 @@ var server = http.createServer(function(req, res) {
   // Body (JSON): { fusionUrl, username, password }
   if (req.url === '/upload-catalog' && req.method === 'POST') {
     return getBody(req, async function(data) {
-      var fusionUrl = (data.fusionUrl || '').trim().replace(/\/+$/, '');
+      //var fusionUrl = (data.fusionUrl || '').trim().replace(/\/+$/, '');
+      var fusionUrl = (data.fusionUrl || '').trim().replace(/\/+$/, '').replace(/^http:/, 'https:');
       var username  = (data.username  || '').trim();
       var password  = (data.password  || '').trim();
  
