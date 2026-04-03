@@ -304,34 +304,35 @@ var server = http.createServer(function(req, res) {
         });
       }
 
-     var uploadPath = '/Shared Folders/Custom/';
+    var uploadPath = '/Shared Folders/Custom/';
 
       var lastStatus = 0;
       var lastBody   = '';
       var uploaded   = false;
 
-      // Oracle Fusion Cloud uses SOAP for BIP catalog operations
+      // Oracle Fusion Cloud CatalogService v2 — correct API for upload
       var soapEnvelope = '<?xml version="1.0" encoding="UTF-8"?>' +
-        '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:pub="http://xmlns.oracle.com/oxp/service/PublicReportService">' +
-        '<soapenv:Header/>' +
-        '<soapenv:Body>' +
-        '<pub:uploadRepository>' +
-        '<pub:reportRepository>' + CATALOG_B64 + '</pub:reportRepository>' +
-        '<pub:path>' + uploadPath + '</pub:path>' +
-        '<pub:overwrite>true</pub:overwrite>' +
-        '</pub:uploadRepository>' +
-        '</soapenv:Body>' +
-        '</soapenv:Envelope>';
+        '<x:Envelope xmlns:x="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v="http://xmlns.oracle.com/oxp/service/v2">' +
+        '<x:Header/>' +
+        '<x:Body>' +
+        '<v:uploadObject>' +
+        '<v:reportObjectAbsolutePathURL>' + uploadPath + '</v:reportObjectAbsolutePathURL>' +
+        '<v:objectType>xdoz</v:objectType>' +
+        '<v:objectZippedData>' + CATALOG_B64 + '</v:objectZippedData>' +
+        '<v:userID>' + username + '</v:userID>' +
+        '<v:password>' + password + '</v:password>' +
+        '</v:uploadObject>' +
+        '</x:Body>' +
+        '</x:Envelope>';
 
       var soapBuf = Buffer.from(soapEnvelope, 'utf8');
 
       try {
-        var soapParsed = url.parse(fusionUrl + '/xmlpserver/services/PublicReportService');
+        var soapParsed = url.parse(fusionUrl + '/xmlpserver/services/v2/CatalogService');
         var result = await doRequest(soapParsed, 'POST', {
-          'Authorization'  : basicAuth,
           'Content-Type'   : 'text/xml; charset=UTF-8',
           'Content-Length' : soapBuf.length,
-          'SOAPAction'     : 'uploadRepository',
+          'SOAPAction'     : 'uploadObject',
           'Accept-Encoding': 'identity'
         }, soapBuf);
 
@@ -349,6 +350,7 @@ var server = http.createServer(function(req, res) {
         lastBody = e.message;
       }
 
+      
       if (uploaded) {
         log('OK', 'Catalog deployed — HTTP ' + lastStatus);
         res.writeHead(200, { 'Content-Type': 'application/json' });
