@@ -343,6 +343,45 @@ var server = http.createServer(function(req, res) {
 if (sessionID) {
   log('REQ', 'Session ID being used: ' + sessionID);
 
+// First download existing working DM to see correct XML structure
+var downloadSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
+  '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v2="http://xmlns.oracle.com/oxp/service/v2">' +
+  '<soapenv:Header/>' +
+  '<soapenv:Body>' +
+  '<v2:downloadObject>' +
+  '<v2:userID>' + username + '</v2:userID>' +
+  '<v2:password>' + password + '</v2:password>' +
+  '<v2:objectType>xdmz</v2:objectType>' +
+  '<v2:reportObjectAbsolutePathURL>/Custom/CloudSQL/CloudSQLDataModel_csv</v2:reportObjectAbsolutePathURL>' +
+  '</v2:downloadObject>' +
+  '</soapenv:Body>' +
+  '</soapenv:Envelope>';
+
+var dlBuf    = Buffer.from(downloadSoap, 'utf8');
+var dlParsed = url.parse(fusionUrl + '/xmlpserver/services/v2/CatalogService');
+var dlResult = await doRequest(dlParsed, 'POST', {
+  'Content-Type'   : 'text/xml; charset=UTF-8',
+  'Content-Length' : dlBuf.length,
+  'SOAPAction'     : 'downloadObject',
+  'Accept-Encoding': 'identity'
+}, dlBuf);
+
+log('REQ', 'Download status: ' + dlResult.status);
+
+// Extract base64 and decode to see actual XDM XML
+var b64Match = dlResult.body.match(/<.*?downloadObjectReturn[^>]*>([^<]+)<\/.*?downloadObjectReturn>/);
+if (b64Match) {
+  var decoded = Buffer.from(b64Match[1], 'base64');
+  var JSZip = require('jszip');
+  var zip0 = await JSZip.loadAsync(decoded);
+  var files = Object.keys(zip0.files);
+  log('REQ', 'Files in zip: ' + files.join(', '));
+  for (var f of files) {
+    var content = await zip0.files[f].async('string');
+    log('REQ', 'File ' + f + ' content: ' + content);
+  }
+}
+ 
   // Minimal valid BIP data model XML
  var dataModelXml = '<?xml version="1.0" encoding="UTF-8"?>' +
   '<dataModel xmlns="http://xmlns.oracle.com/oxp/datamodel" ' +
