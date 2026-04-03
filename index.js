@@ -304,7 +304,7 @@ var server = http.createServer(function(req, res) {
         });
       }
 
-    var uploadPath = '/Shared Folders/Custom/';
+    var uploadPath = '/Custom/';
 
       var lastStatus = 0;
       var lastBody   = '';
