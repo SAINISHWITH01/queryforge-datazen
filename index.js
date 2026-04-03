@@ -321,20 +321,29 @@ var server = http.createServer(function(req, res) {
           lastStatus = result.status;
           lastBody   = result.body;
  
-          // Follow one level of redirect (302/301) — carry auth along
-          if ((result.status === 301 || result.status === 302 || result.status === 303) && result.headers['location']) {
-            var redirectUrl = result.headers['location'];
-            log('REQ', 'Following redirect → ' + redirectUrl);
-            var parsedRedirect = url.parse(redirectUrl);
-            result = await doRequest(parsedRedirect, 'POST', {
-              'Authorization'  : basicAuth,
-              'Content-Type'   : 'application/octet-stream',
-              'Content-Length' : catalogBuf.length,
-              'Accept'         : 'application/json'
-            }, catalogBuf);
-            lastStatus = result.status;
-            lastBody   = result.body;
+         
+         // Follow one level of redirect (302/301) — carry auth along
+        if ((result.status === 301 || result.status === 302 || result.status === 303) && result.headers['location']) {
+          var redirectUrl = result.headers['location'];
+          log('REQ', 'Following redirect → ' + redirectUrl);
+        
+          // Oracle redirects to login page when auth fails — treat as 401
+          if (redirectUrl.includes('AtkHomePageWelcome') || redirectUrl.includes('login') || redirectUrl.includes('faces')) {
+            lastStatus = 401;
+            lastBody = 'Authentication failed — invalid credentials or insufficient privileges';
+            break;
           }
+        
+          var parsedRedirect = url.parse(redirectUrl);
+          result = await doRequest(parsedRedirect, 'POST', {
+            'Authorization'  : basicAuth,
+            'Content-Type'   : 'application/octet-stream',
+            'Content-Length' : catalogBuf.length,
+            'Accept'         : 'application/json'
+          }, catalogBuf);
+          lastStatus = result.status;
+          lastBody   = result.body;
+        }
  
           if (lastStatus === 200 || lastStatus === 201 || lastStatus === 204) {
             uploaded = true;
