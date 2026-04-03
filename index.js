@@ -341,43 +341,62 @@ var server = http.createServer(function(req, res) {
   // Step 2: Unarchive catalog to /shared/Custom
 if (sessionID) {
   log('REQ', 'Session ID being used: ' + sessionID);
-  var createFolderSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
-    '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
+
+  // Minimal valid BIP data model XML
+  var dataModelXml = '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<dataModel xmlns="http://xmlns.oracle.com/oxp/datamodel" version="2.0">' +
+    '<description><![CDATA[Sample Data Model]]></description>' +
+    '<dataProperties>' +
+    '<property name="xmlRowTagName" value="ROW"/>' +
+    '<property name="groupBySource" value="false"/>' +
+    '</dataProperties>' +
+    '<dataSets/>' +
+    '<eventTriggers/>' +
+    '<flexFields/>' +
+    '<valueSets/>' +
+    '<parameters/>' +
+    '<bursting/>' +
+    '</dataModel>';
+
+  var dataModelB64 = Buffer.from(dataModelXml).toString('base64');
+
+  var uploadSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v2="http://xmlns.oracle.com/oxp/service/v2">' +
+    '<soapenv:Header/>' +
     '<soapenv:Body>' +
-    '<saw:createFolder>' +
-    '<saw:path>/shared/Custom/TestFolder</saw:path>' +
-    '<saw:createIfNotExists>true</saw:createIfNotExists>' +
-    '<saw:sessionID>' + sessionID + '</saw:sessionID>' +
-    '</saw:createFolder>' +
+    '<v2:uploadObject>' +
+    '<v2:reportObjectAbsolutePath>/Custom/SampleDataModel.xdm</v2:reportObjectAbsolutePath>' +
+    '<v2:objectType>xdm</v2:objectType>' +
+    '<v2:reportObjectData>' + dataModelB64 + '</v2:reportObjectData>' +
+    '<v2:userID>' + username + '</v2:userID>' +
+    '<v2:password>' + password + '</v2:password>' +
+    '</v2:uploadObject>' +
     '</soapenv:Body>' +
     '</soapenv:Envelope>';
 
   try {
-    var folderBuf    = Buffer.from(createFolderSoap, 'utf8');
-    var folderParsed = url.parse(fusionUrl + '/analytics-ws/saw.dll?SoapImpl=webCatalogService');
+    var folderBuf    = Buffer.from(uploadSoap, 'utf8');
+    var folderParsed = url.parse(fusionUrl + '/xmlpserver/services/v2/CatalogService');
     var result = await doRequest(folderParsed, 'POST', {
       'Content-Type'   : 'text/xml; charset=UTF-8',
       'Content-Length' : folderBuf.length,
-      'SOAPAction'     : 'createFolder',
+      'SOAPAction'     : 'uploadObject',
       'Accept-Encoding': 'identity'
     }, folderBuf);
 
-          lastStatus = result.status;
-          lastBody   = result.body;
-          log('REQ', 'CreateFolder status: ' + lastStatus);
-          log('REQ', 'CreateFolder body: ' + lastBody);
+    lastStatus = result.status;
+    lastBody   = result.body;
+    log('REQ', 'UploadObject status: ' + lastStatus);
+    log('REQ', 'UploadObject body: ' + lastBody);
 
-          if (lastStatus === 200 && !lastBody.includes('Fault')) {
-            uploaded = true;
-          }
-        } catch(e) {
-          log('ERR', 'CreateFolder error: ' + e.message);
-          lastBody = e.message;
-        }
-      } else {
-        lastStatus = 401;
-        lastBody = 'Could not obtain session token — check credentials';
-      }
+    if (lastStatus === 200 && !lastBody.includes('Fault')) {
+      uploaded = true;
+    }
+  } catch(e) {
+    log('ERR', 'UploadObject error: ' + e.message);
+    lastBody = e.message;
+  }
+}
 
       if (uploaded) {
         log('OK', 'Folder created — HTTP ' + lastStatus);
