@@ -343,7 +343,7 @@ var server = http.createServer(function(req, res) {
   '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:saw="com.siebel.analytics.web/soap/v2">' +
   '<soapenv:Body>' +
   '<saw:getSubItems>' +
-  '<saw:path>/</saw:path>' +
+  '<saw:path>/shared</saw:path>' +
   '<saw:mask>*</saw:mask>' +
   '<saw:resolveLinks>false</saw:resolveLinks>' +
   '<saw:recursive>false</saw:recursive>' +
