@@ -353,7 +353,7 @@ var downloadSoap = '<?xml version="1.0" encoding="UTF-8"?>' +
   '<v2:userID>' + username + '</v2:userID>' +
   '<v2:password>' + password + '</v2:password>' +
   '<v2:objectType>xdmz</v2:objectType>' +
-  '<v2:reportObjectAbsolutePathURL>/Custom/CloudSQL/CloudSQLDataModel_csv</v2:reportObjectAbsolutePathURL>' +
+  '<v2:reportObjectAbsolutePathURL>/Custom/CloudSQL/CloudSQLDataModel_csv.xdm</v2:reportObjectAbsolutePathURL>' +
   '</v2:downloadObject>' +
   '</soapenv:Body>' +
   '</soapenv:Envelope>';
